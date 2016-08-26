@@ -4,24 +4,20 @@
 // Most of the time you'll just need to call the proper function with a buffer and
 // a destination:
 //
-//     ```go
 //     data, _ := ioutil.ReadFile("path/to/file.tar.bz2")
 //     buffer := bytes.NewBuffer(data)
 //     extract.TarBz2(data, "/path/where/to/extract", nil)
-//     ```
 //
 // Sometimes you'll want a bit more control over the files, such as extracting
 // a subfolder of the archive. In this cases you can specify a renamer	func
 // that will change the path for every file:
 //
-//      ```go
 //      var shift = func(path string) string {
 //          parts := strings.Split(path, string(filepath.Separator))
 //          parts = parts[1:]
 //          return strings.Join(parts, string(filepath.Separator))
 //      }
 //      extract.TarBz2(data, "/path/where/to/extract", shift)
-//      ```
 package extract
 
 import (
