@@ -1,9 +1,7 @@
-use 'godoc cmd/github.com/codeclysm/extract' for documentation on the github.com/codeclysm/extract command 
-
-Package extract
+Extract
 =====================
 
-    import "github.com/codeclysm/extract"
+    import "gopkg.in/codeclysm/extract.v1"
 
 Package extract allows to extract archives in zip, tar.gz or tar.bz2 formats
 easily.
@@ -77,5 +75,3 @@ type Renamer func(string) string
 Renamer is a function that can be used to rename the files when you're
 extracting them. For example you may want to only extract files with a certain
 pattern. If you return an empty string they won't be extracted.
-
-
