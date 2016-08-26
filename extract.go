@@ -110,9 +110,21 @@ func Tar(body io.Reader, location string, rename Renamer) error {
 			}
 			files = append(files, file{Path: path, Mode: info.Mode(), Data: data})
 		case tar.TypeLink:
-			links = append(links, link{Path: path, Name: header.Linkname})
+			name := header.Linkname
+			if rename != nil {
+				name = rename(name)
+			}
+
+			name = filepath.Join(location, name)
+			links = append(links, link{Path: path, Name: name})
 		case tar.TypeSymlink:
-			symlinks = append(symlinks, link{Path: path, Name: header.Linkname})
+			name := header.Linkname
+			if rename != nil {
+				name = rename(name)
+			}
+
+			name = filepath.Join(location, name)
+			symlinks = append(symlinks, link{Path: path, Name: name})
 		}
 	}
 
@@ -124,7 +136,7 @@ func Tar(body io.Reader, location string, rename Renamer) error {
 	}
 
 	for i := range links {
-		if err := os.Symlink(links[i].Name, links[i].Path); err != nil {
+		if err := os.Link(links[i].Name, links[i].Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", links[i].Path)
 		}
 	}

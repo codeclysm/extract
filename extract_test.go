@@ -39,7 +39,7 @@ var ExtractCases = []struct {
 		"/archive/folder/file1.txt": "folder/File1",
 		"/archive/file1.txt":        "File1",
 		"/archive/file2.txt":        "File2",
-		"/archive/link.txt":         "link",
+		"/archive/link.txt":         "File1",
 	}},
 	{"shift bz2", "testdata/archive.tar.bz2", shift, Files{
 		"/folder":           "dir",
@@ -47,7 +47,7 @@ var ExtractCases = []struct {
 		"/folder/file1.txt": "folder/File1",
 		"/file1.txt":        "File1",
 		"/file2.txt":        "File2",
-		"/link.txt":         "link",
+		"/link.txt":         "File1",
 	}},
 	{"subfolder bz2", "testdata/archive.tar.bz2", subfolder, Files{
 		"/archive":                  "dir",
@@ -63,7 +63,7 @@ var ExtractCases = []struct {
 		"/archive/folder/file1.txt": "folder/File1",
 		"/archive/file1.txt":        "File1",
 		"/archive/file2.txt":        "File2",
-		"/archive/link.txt":         "link",
+		"/archive/link.txt":         "File1",
 	}},
 	{"shift gz", "testdata/archive.tar.gz", shift, Files{
 		"/folder":           "dir",
@@ -71,7 +71,7 @@ var ExtractCases = []struct {
 		"/folder/file1.txt": "folder/File1",
 		"/file1.txt":        "File1",
 		"/file2.txt":        "File2",
-		"/link.txt":         "link",
+		"/link.txt":         "File1",
 	}},
 	{"subfolder gz", "testdata/archive.tar.gz", subfolder, Files{
 		"/archive":                  "dir",
