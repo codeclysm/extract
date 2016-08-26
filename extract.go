@@ -118,13 +118,7 @@ func Tar(body io.Reader, location string, rename Renamer) error {
 			name = filepath.Join(location, name)
 			links = append(links, link{Path: path, Name: name})
 		case tar.TypeSymlink:
-			name := header.Linkname
-			if rename != nil {
-				name = rename(name)
-			}
-
-			name = filepath.Join(location, name)
-			symlinks = append(symlinks, link{Path: path, Name: name})
+			symlinks = append(symlinks, link{Path: path, Name: header.Linkname})
 		}
 	}
 
