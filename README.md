@@ -1,7 +1,7 @@
 Extract
 =====================
 
-    import "gopkg.in/codeclysm/extract.v1"
+    import "github.com/codeclysm/extract"
 
 Package extract allows to extract archives in zip, tar.gz or tar.bz2 formats
 easily.
