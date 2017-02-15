@@ -175,7 +175,7 @@ func Zip(body io.Reader, location string, rename Renamer) error {
 
 		switch {
 		case info.IsDir():
-			if err := os.MkdirAll(path, info.Mode()); err != nil {
+			if err := os.MkdirAll(path, info.Mode()|os.ModeDir|100); err != nil {
 				return errors.Annotatef(err, "Create directory %s", path)
 			}
 		// We only check for symlinks because hard links aren't possible
@@ -219,7 +219,8 @@ func Zip(body io.Reader, location string, rename Renamer) error {
 }
 
 func copy(path string, mode os.FileMode, src io.Reader) error {
-	err := os.MkdirAll(filepath.Dir(path), mode|os.ModeDir)
+	// We add the execution permission to be able to create files inside it
+	err := os.MkdirAll(filepath.Dir(path), mode|os.ModeDir|100)
 	if err != nil {
 		return err
 	}
