@@ -196,7 +196,7 @@ func BenchmarkTarGz(b *testing.B) {
 	buffer := bytes.NewBuffer(data)
 
 	for i := 0; i < b.N; i++ {
-		extract.TarBz2(buffer, dir, nil)
+		extract.TarGz(buffer, dir, nil)
 		os.Remove(dir)
 	}
 }
@@ -207,7 +207,7 @@ func BenchmarkZip(b *testing.B) {
 	buffer := bytes.NewBuffer(data)
 
 	for i := 0; i < b.N; i++ {
-		extract.TarBz2(buffer, dir, nil)
+		extract.Zip(buffer, dir, nil)
 		os.Remove(dir)
 	}
 }
