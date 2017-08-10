@@ -115,7 +115,7 @@ func TestExtract(t *testing.T) {
 		data, _ := ioutil.ReadFile(test.Archive)
 		buffer := bytes.NewBuffer(data)
 
-		useOtherTestFuncs(t, buffer, dir, test)
+		testOtherTestFuncs(t, buffer, dir, test)
 
 		files := Files{}
 
@@ -132,7 +132,7 @@ func TestArchive(t *testing.T) {
 		dir, _ := ioutil.TempDir("", "")
 		data, _ := ioutil.ReadFile(test.Archive)
 
-		useArchiveFunc(t, data, dir, test)
+		testArchiveFunc(t, data, dir, test)
 
 		files := Files{}
 
@@ -203,7 +203,7 @@ func BenchmarkArchive(b *testing.B) {
 	}
 }
 
-func useArchiveFunc(t *testing.T, data []byte, dir string, test testCase) {
+func testArchiveFunc(t *testing.T, data []byte, dir string, test testCase) {
 	err := extract.Archive(data, dir, test.Renamer)
 
 	if err != nil {
@@ -211,7 +211,7 @@ func useArchiveFunc(t *testing.T, data []byte, dir string, test testCase) {
 	}
 }
 
-func useOtherTestFuncs(t *testing.T, buffer io.Reader, dir string, test testCase) {
+func testOtherTestFuncs(t *testing.T, buffer io.Reader, dir string, test testCase) {
 	var err error
 	switch filepath.Ext(test.Archive) {
 	case ".bz2":
