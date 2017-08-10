@@ -2,6 +2,7 @@ package extract_test
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -26,12 +27,14 @@ var subfolder = func(path string) string {
 	return ""
 }
 
-var ExtractCases = []struct {
+type testCase struct {
 	Name    string
 	Archive string
 	Renamer extract.Renamer
 	Files   Files
-}{
+}
+
+var ExtractCases = []testCase{
 	{"standard bz2", "testdata/archive.tar.bz2", nil, Files{
 		"/archive":                  "dir",
 		"/archive/folder":           "dir",
@@ -112,68 +115,30 @@ func TestExtract(t *testing.T) {
 		data, _ := ioutil.ReadFile(test.Archive)
 		buffer := bytes.NewBuffer(data)
 
-		var err error
-		switch filepath.Ext(test.Archive) {
-		case ".bz2":
-			err = extract.Bz2(buffer, dir, test.Renamer)
-		case ".gz":
-			err = extract.Gz(buffer, dir, test.Renamer)
-		case ".zip":
-			err = extract.Zip(buffer, dir, test.Renamer)
-		}
-
-		if err != nil {
-			t.Error(test.Name, ": Should not fail: "+err.Error())
-		}
+		useOtherTestFuncs(t, buffer, dir, test)
 
 		files := Files{}
 
-		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			path = strings.Replace(path, dir, "", 1)
-			if path == "" {
-				return nil
-			}
+		filepath.Walk(dir, walkFunc(files, dir))
 
-			if info.IsDir() {
-				files[path] = "dir"
-			} else if info.Mode()&os.ModeSymlink != 0 {
-				files[path] = "link"
-			} else {
-				data, err := ioutil.ReadFile(filepath.Join(dir, path))
-				if err != nil {
+		verifyArchives(files, test, t)
 
-				}
-				files[path] = strings.TrimSpace(string(data))
-			}
+		os.Remove(dir)
+	}
+}
 
-			return nil
-		})
+func TestArchive(t *testing.T) {
+	for _, test := range ExtractCases {
+		dir, _ := ioutil.TempDir("", "")
+		data, _ := ioutil.ReadFile(test.Archive)
 
-		for file, kind := range files {
-			k, ok := test.Files[file]
-			if !ok {
-				t.Error(test.Name, ": "+file+" should not exist")
-				continue
-			}
+		useArchiveFunc(t, data, dir, test)
 
-			if kind != k {
-				t.Error(test.Name, ": "+file+" should be "+k+", not "+kind)
-				continue
-			}
-		}
+		files := Files{}
 
-		for file, kind := range test.Files {
-			k, ok := files[file]
-			if !ok {
-				t.Error(test.Name, ": "+file+" should exist")
-				continue
-			}
+		filepath.Walk(dir, walkFunc(files, dir))
 
-			if kind != k {
-				t.Error(test.Name, ": "+file+" should be "+kind+", not "+k)
-				continue
-			}
-		}
+		verifyArchives(files, test, t)
 
 		os.Remove(dir)
 	}
@@ -209,5 +174,106 @@ func BenchmarkZip(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		extract.Bz2(buffer, dir, nil)
 		os.Remove(dir)
+	}
+}
+
+func BenchmarkArchive(b *testing.B) {
+	dir, _ := ioutil.TempDir("", "")
+	data, _ := ioutil.ReadFile("testdata/archive.zip")
+
+	for i := 0; i < b.N; i++ {
+		extract.Archive(data, dir, nil)
+		os.Remove(dir)
+	}
+
+	dir, _ = ioutil.TempDir("", "")
+	data, _ = ioutil.ReadFile("testdata/archive.tar.gz")
+
+	for i := 0; i < b.N; i++ {
+		extract.Archive(data, dir, nil)
+		os.Remove(dir)
+	}
+
+	dir, _ = ioutil.TempDir("", "")
+	data, _ = ioutil.ReadFile("testdata/archive.tar.bz2")
+
+	for i := 0; i < b.N; i++ {
+		extract.Archive(data, dir, nil)
+		os.Remove(dir)
+	}
+}
+
+func useArchiveFunc(t *testing.T, data []byte, dir string, test testCase) {
+	err := extract.Archive(data, dir, test.Renamer)
+
+	if err != nil {
+		t.Error(test.Name, ": Should not fail: "+err.Error())
+	}
+}
+
+func useOtherTestFuncs(t *testing.T, buffer io.Reader, dir string, test testCase) {
+	var err error
+	switch filepath.Ext(test.Archive) {
+	case ".bz2":
+		err = extract.Bz2(buffer, dir, test.Renamer)
+	case ".gz":
+		err = extract.Gz(buffer, dir, test.Renamer)
+	case ".zip":
+		err = extract.Zip(buffer, dir, test.Renamer)
+	}
+
+	if err != nil {
+		t.Error(test.Name, ": Should not fail: "+err.Error())
+	}
+}
+
+func verifyArchives(files map[string]string, test testCase, t *testing.T) {
+	for file, kind := range files {
+		k, ok := test.Files[file]
+		if !ok {
+			t.Error(test.Name, ": "+file+" should not exist")
+			continue
+		}
+
+		if kind != k {
+			t.Error(test.Name, ": "+file+" should be "+k+", not "+kind)
+			continue
+		}
+	}
+
+	for file, kind := range test.Files {
+		k, ok := files[file]
+		if !ok {
+			t.Error(test.Name, ": "+file+" should exist")
+			continue
+		}
+
+		if kind != k {
+			t.Error(test.Name, ": "+file+" should be "+kind+", not "+k)
+			continue
+		}
+	}
+}
+
+func walkFunc(files map[string]string, dir string) func(path string, info os.FileInfo, err error) error {
+	return func(path string, info os.FileInfo, err error) error {
+		path = strings.Replace(path, dir, "", 1)
+		if path == "" {
+			return nil
+		}
+
+		if info.IsDir() {
+			files[path] = "dir"
+		} else if info.Mode()&os.ModeSymlink != 0 {
+			files[path] = "link"
+		} else {
+			data, err := ioutil.ReadFile(filepath.Join(dir, path))
+			if err != nil {
+
+			}
+			files[path] = strings.TrimSpace(string(data))
+		}
+
+		return nil
 	}
 }

@@ -33,6 +33,14 @@ extract.TarBz2(data, "/path/where/to/extract", shift)
 Functions
 ---------
 
+```go
+func Archive(fileContent []byte, location string, rename Renamer) error
+```
+
+Archive extracts a generic archived stream of data in the specified location.
+It automatically detects the archive type and accepts a rename function to
+handle the names of the files.
+If the file is not an archive, an error is returned.
 
 ```go
 func Tar(body io.Reader, location string, rename Renamer) error
@@ -43,19 +51,19 @@ accepts a rename function to handle the names of the files (see the example)
 
 
 ```go
-func TarBz2(body io.Reader, location string, rename Renamer) error
+func Bz2(body io.Reader, location string, rename Renamer) error
 ```
 
-TarBz2 extracts a .tar.bz2 archived stream of data in the specified location. It
-accepts a rename function to handle the names of the files (see the example)
+Bz2 extracts a .bz2 or .tar.bz2 archived stream of data in the specified location.
+It accepts a rename function to handle the names of the files (see the example)
 
 
 ```go
-func TarGz(body io.Reader, location string, rename Renamer) error
+func Gz(body io.Reader, location string, rename Renamer) error
 ```
 
-TarGz extracts a .tar.gz archived stream of data in the specified location. It
-accepts a rename function to handle the names of the files (see the example)
+Gz extracts a .gz or .tar.gz archived stream of data in the specified location.
+It accepts a rename function to handle the names of the files (see the example)
 
 
 ```go
