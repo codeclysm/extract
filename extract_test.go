@@ -115,9 +115,9 @@ func TestExtract(t *testing.T) {
 		var err error
 		switch filepath.Ext(test.Archive) {
 		case ".bz2":
-			err = extract.TarBz2(buffer, dir, test.Renamer)
+			err = extract.Bz2(buffer, dir, test.Renamer)
 		case ".gz":
-			err = extract.TarGz(buffer, dir, test.Renamer)
+			err = extract.Gz(buffer, dir, test.Renamer)
 		case ".zip":
 			err = extract.Zip(buffer, dir, test.Renamer)
 		}
@@ -179,24 +179,24 @@ func TestExtract(t *testing.T) {
 	}
 }
 
-func BenchmarkTarBz2(b *testing.B) {
+func BenchmarkBz2(b *testing.B) {
 	dir, _ := ioutil.TempDir("", "")
 	data, _ := ioutil.ReadFile("testdata/archive.tar.bz2")
 	buffer := bytes.NewBuffer(data)
 
 	for i := 0; i < b.N; i++ {
-		extract.TarBz2(buffer, dir, nil)
+		extract.Bz2(buffer, dir, nil)
 		os.Remove(dir)
 	}
 }
 
-func BenchmarkTarGz(b *testing.B) {
+func BenchmarkGz(b *testing.B) {
 	dir, _ := ioutil.TempDir("", "")
 	data, _ := ioutil.ReadFile("testdata/archive.tar.gz")
 	buffer := bytes.NewBuffer(data)
 
 	for i := 0; i < b.N; i++ {
-		extract.TarBz2(buffer, dir, nil)
+		extract.Bz2(buffer, dir, nil)
 		os.Remove(dir)
 	}
 }
@@ -207,7 +207,7 @@ func BenchmarkZip(b *testing.B) {
 	buffer := bytes.NewBuffer(data)
 
 	for i := 0; i < b.N; i++ {
-		extract.TarBz2(buffer, dir, nil)
+		extract.Bz2(buffer, dir, nil)
 		os.Remove(dir)
 	}
 }

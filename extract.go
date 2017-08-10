@@ -32,6 +32,7 @@ import (
 	"path/filepath"
 
 	"github.com/juju/errors"
+	"gopkg.in/h2non/filetype.v1"
 )
 
 // Renamer is a function that can be used to rename the files when you're extracting
@@ -39,21 +40,59 @@ import (
 // If you return an empty string they won't be extracted.
 type Renamer func(string) string
 
-// TarBz2 extracts a .tar.bz2 archived stream of data in the specified location.
-// It accepts a rename function to handle the names of the files (see the example)
-func TarBz2(body io.Reader, location string, rename Renamer) error {
-	reader := bzip2.NewReader(body)
-	return Tar(reader, location, rename)
+// Archive extracts a generic archived stream of data in the specified location.
+// It automatically detects the archive type and accepts a rename function to
+// handle the names of the files.
+// If the file is not an archive, an error is returned.
+func Archive(fileContent []byte, location string, rename Renamer) error {
+	kind, err := filetype.Archive(fileContent)
+	if err != nil {
+		errors.Annotatef(err, "Detect archive type")
+	}
+	body := bytes.NewBuffer(fileContent)
+	switch kind.Extension {
+	case "zip":
+		return Zip(body, location, rename)
+	case "gz":
+		return Gz(body, location, rename)
+	case "bz2":
+		return Bz2(body, location, rename)
+	case "tar":
+		return Tar(body, location, rename)
+	default:
+		return errors.New("Not a supported archive")
+	}
 }
 
-// TarGz extracts a .tar.gz archived stream of data in the specified location.
+// Bz2 extracts a .bz2 or .tar.bz2 archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
-func TarGz(body io.Reader, location string, rename Renamer) error {
+func Bz2(body io.Reader, location string, rename Renamer) error {
+	reader := bzip2.NewReader(body)
+
+	content, _ := ioutil.ReadAll(reader)
+
+	kind, _ := filetype.Archive(content)
+	if kind.Extension == "tar" {
+		return Tar(bytes.NewBuffer(content), location, rename)
+	}
+	return copy(location, 0666, reader)
+}
+
+// Gz extracts a .gz or .tar.gz archived stream of data in the specified location.
+// It accepts a rename function to handle the names of the files (see the example)
+func Gz(body io.Reader, location string, rename Renamer) error {
 	reader, err := gzip.NewReader(body)
 	if err != nil {
 		return errors.Annotatef(err, "Gunzip")
 	}
-	return Tar(reader, location, rename)
+
+	content, _ := ioutil.ReadAll(reader)
+
+	kind, _ := filetype.Archive(content)
+	if kind.Extension == "tar" {
+		return Tar(bytes.NewBuffer(content), location, rename)
+	}
+	return copy(location, 0666, reader)
 }
 
 type file struct {
