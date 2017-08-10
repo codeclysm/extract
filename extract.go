@@ -44,21 +44,22 @@ type Renamer func(string) string
 // It automatically detects the archive type and accepts a rename function to
 // handle the names of the files.
 // If the file is not an archive, an error is returned.
-func Archive(fileContent []byte, location string, rename Renamer) error {
-	kind, err := filetype.Archive(fileContent)
+func Archive(body io.Reader, location string, rename Renamer) error {
+	var archive bytes.Buffer
+	tee := io.TeeReader(body, &archive)
+	kind, err := filetype.MatchReader(tee)
 	if err != nil {
 		errors.Annotatef(err, "Detect archive type")
 	}
-	body := bytes.NewBuffer(fileContent)
 	switch kind.Extension {
 	case "zip":
-		return Zip(body, location, rename)
+		return Zip(&archive, location, rename)
 	case "gz":
-		return Gz(body, location, rename)
+		return Gz(&archive, location, rename)
 	case "bz2":
-		return Bz2(body, location, rename)
+		return Bz2(&archive, location, rename)
 	case "tar":
-		return Tar(body, location, rename)
+		return Tar(&archive, location, rename)
 	default:
 		return errors.New("Not a supported archive")
 	}
@@ -69,13 +70,13 @@ func Archive(fileContent []byte, location string, rename Renamer) error {
 func Bz2(body io.Reader, location string, rename Renamer) error {
 	reader := bzip2.NewReader(body)
 
-	content, _ := ioutil.ReadAll(reader)
-
-	kind, _ := filetype.Archive(content)
+	var inner bytes.Buffer
+	tee := io.TeeReader(reader, &inner)
+	kind, _ := filetype.MatchReader(tee)
 	if kind.Extension == "tar" {
-		return Tar(bytes.NewBuffer(content), location, rename)
+		return Tar(&inner, location, rename)
 	}
-	return copy(location, 0666, reader)
+	return copy(location, 0666, &inner)
 }
 
 // Gz extracts a .gz or .tar.gz archived stream of data in the specified location.
@@ -85,14 +86,12 @@ func Gz(body io.Reader, location string, rename Renamer) error {
 	if err != nil {
 		return errors.Annotatef(err, "Gunzip")
 	}
-
-	content, _ := ioutil.ReadAll(reader)
-
-	kind, _ := filetype.Archive(content)
+	var inner bytes.Buffer
+	kind, _ := filetype.MatchReader(io.TeeReader(reader, &inner))
 	if kind.Extension == "tar" {
-		return Tar(bytes.NewBuffer(content), location, rename)
+		return Tar(&inner, location, rename)
 	}
-	return copy(location, 0666, reader)
+	return copy(location, 0666, &inner)
 }
 
 type file struct {
@@ -186,8 +185,8 @@ func Tar(body io.Reader, location string, rename Renamer) error {
 // It accepts a rename function to handle the names of the files (see the example).
 func Zip(body io.Reader, location string, rename Renamer) error {
 	// read the whole body into a buffer. Not sure this is the best way to do it
-	buffer := bytes.NewBuffer([]byte{})
-	io.Copy(buffer, body)
+	var buffer bytes.Buffer
+	io.Copy(&buffer, body)
 
 	archive, err := zip.NewReader(bytes.NewReader(buffer.Bytes()), int64(buffer.Len()))
 	if err != nil {

@@ -34,7 +34,7 @@ Functions
 ---------
 
 ```go
-func Archive(fileContent []byte, location string, rename Renamer) error
+func Archive(body io.Reader, location string, rename Renamer) error
 ```
 
 Archive extracts a generic archived stream of data in the specified location.
