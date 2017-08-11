@@ -41,6 +41,31 @@ import (
 // If you return an empty string they won't be extracted.
 type Renamer func(string) string
 
+// Archive extracts a generic archived stream of data in the specified location.
+// It automatically detects the archive type and accepts a rename function to
+// handle the names of the files.
+// If the file is not an archive, an error is returned.
+func Archive(body io.Reader, location string, rename Renamer) error {
+	var archive bytes.Buffer
+	tee := io.TeeReader(body, &archive)
+	kind, err := filetype.MatchReader(tee)
+	if err != nil {
+		errors.Annotatef(err, "Detect archive type")
+	}
+	switch kind.Extension {
+	case "zip":
+		return Zip(&archive, location, rename)
+	case "gz":
+		return Gz(&archive, location, rename)
+	case "bz2":
+		return Bz2(&archive, location, rename)
+	case "tar":
+		return Tar(&archive, location, rename)
+	default:
+		return errors.New("Not a supported archive")
+	}
+}
+
 // Bz2 extracts a .bz2 or .tar.bz2 archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Bz2(body io.Reader, location string, rename Renamer) error {
