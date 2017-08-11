@@ -34,6 +34,7 @@ var ExtractCases = []struct {
 	Files   Files
 }{
 	{"standard bz2", "testdata/archive.tar.bz2", nil, Files{
+		"":                          "dir",
 		"/archive":                  "dir",
 		"/archive/folder":           "dir",
 		"/archive/folderlink":       "link",
@@ -43,6 +44,7 @@ var ExtractCases = []struct {
 		"/archive/link.txt":         "File1",
 	}},
 	{"shift bz2", "testdata/archive.tar.bz2", shift, Files{
+		"":                  "dir",
 		"/folder":           "dir",
 		"/folderlink":       "link",
 		"/folder/file1.txt": "folder/File1",
@@ -51,13 +53,18 @@ var ExtractCases = []struct {
 		"/link.txt":         "File1",
 	}},
 	{"subfolder bz2", "testdata/archive.tar.bz2", subfolder, Files{
+		"":                          "dir",
 		"/archive":                  "dir",
 		"/archive/folder":           "dir",
 		"/archive/folder/file1.txt": "folder/File1",
 		"/archive/folderlink":       "link",
 	}},
+	{"not tarred bz2", "testdata/singlefile.bz2", nil, Files{
+		"": "singlefile",
+	}},
 
 	{"standard gz", "testdata/archive.tar.gz", nil, Files{
+		"":                          "dir",
 		"/archive":                  "dir",
 		"/archive/folder":           "dir",
 		"/archive/folderlink":       "link",
@@ -67,6 +74,7 @@ var ExtractCases = []struct {
 		"/archive/link.txt":         "File1",
 	}},
 	{"shift gz", "testdata/archive.tar.gz", shift, Files{
+		"":                  "dir",
 		"/folder":           "dir",
 		"/folderlink":       "link",
 		"/folder/file1.txt": "folder/File1",
@@ -75,14 +83,18 @@ var ExtractCases = []struct {
 		"/link.txt":         "File1",
 	}},
 	{"subfolder gz", "testdata/archive.tar.gz", subfolder, Files{
+		"":                          "dir",
 		"/archive":                  "dir",
 		"/archive/folder":           "dir",
 		"/archive/folder/file1.txt": "folder/File1",
 		"/archive/folderlink":       "link",
 	}},
-
+	{"not tarred gz", "testdata/singlefile.gz", nil, Files{
+		"": "singlefile",
+	}},
 	// Note that the zip format doesn't support hard links
 	{"standard zip", "testdata/archive.zip", nil, Files{
+		"":                          "dir",
 		"/archive":                  "dir",
 		"/archive/folder":           "dir",
 		"/archive/folderlink":       "link",
@@ -92,6 +104,7 @@ var ExtractCases = []struct {
 		"/archive/link.txt":         "File1",
 	}},
 	{"shift zip", "testdata/archive.zip", shift, Files{
+		"":                  "dir",
 		"/folder":           "dir",
 		"/folderlink":       "link",
 		"/folder/file1.txt": "folder/File1",
@@ -100,6 +113,7 @@ var ExtractCases = []struct {
 		"/link.txt":         "File1",
 	}},
 	{"subfolder zip", "testdata/archive.zip", subfolder, Files{
+		"":                          "dir",
 		"/archive":                  "dir",
 		"/archive/folder":           "dir",
 		"/archive/folder/file1.txt": "folder/File1",
@@ -110,15 +124,18 @@ var ExtractCases = []struct {
 func TestExtract(t *testing.T) {
 	for _, test := range ExtractCases {
 		dir, _ := ioutil.TempDir("", "")
-		data, _ := ioutil.ReadFile(test.Archive)
+		dir = filepath.Join(dir, "test")
+		data, err := ioutil.ReadFile(test.Archive)
+		if err != nil {
+			t.Fatal(err)
+		}
 		buffer := bytes.NewBuffer(data)
 
-		var err error
 		switch filepath.Ext(test.Archive) {
 		case ".bz2":
 			err = extract.Bz2(buffer, dir, test.Renamer)
 		case ".gz":
-			err = extract.TarGz(buffer, dir, test.Renamer)
+			err = extract.Gz(buffer, dir, test.Renamer)
 		case ".zip":
 			err = extract.Zip(buffer, dir, test.Renamer)
 		}
@@ -131,9 +148,6 @@ func TestExtract(t *testing.T) {
 
 		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			path = strings.Replace(path, dir, "", 1)
-			if path == "" {
-				return nil
-			}
 
 			if info.IsDir() {
 				files[path] = "dir"
@@ -176,7 +190,10 @@ func TestExtract(t *testing.T) {
 			}
 		}
 
-		os.Remove(dir)
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -210,7 +227,7 @@ func BenchmarkTarGz(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		buffer := bytes.NewBuffer(data)
-		err := extract.TarGz(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		err := extract.Gz(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
 		if err != nil {
 			b.Error(err)
 		}

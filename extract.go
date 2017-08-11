@@ -59,18 +59,43 @@ func Bz2(body io.Reader, location string, rename Renamer) error {
 	if kind.Extension == "tar" {
 		return Tar(&inner, location, rename)
 	}
-	return copy(location, 0666, &inner)
+
+	err = copy(location, 0666, &inner)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-// TarGz extracts a .tar.gz archived stream of data in the specified location.
+// Gz extracts a .gz or .tar.gz archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
-func TarGz(body io.Reader, location string, rename Renamer) error {
+func Gz(body io.Reader, location string, rename Renamer) error {
 	reader, err := gzip.NewReader(body)
 	if err != nil {
 		return errors.Annotatef(err, "Gunzip")
 	}
 
-	return Tar(reader, location, rename)
+	var inner bytes.Buffer
+	tee := io.TeeReader(reader, &inner)
+	kind, err := filetype.MatchReader(tee)
+	if err != nil {
+		return err
+	}
+
+	// Finish reading the tee
+	ioutil.ReadAll(tee)
+
+	// Finish reading the tee
+	ioutil.ReadAll(tee)
+
+	if kind.Extension == "tar" {
+		return Tar(&inner, location, rename)
+	}
+	err = copy(location, 0666, &inner)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type file struct {
