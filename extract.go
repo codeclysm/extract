@@ -48,7 +48,10 @@ func Bz2(body io.Reader, location string, rename Renamer) error {
 
 	var inner bytes.Buffer
 	tee := io.TeeReader(reader, &inner)
-	kind, _ := filetype.MatchReader(tee)
+	kind, err := filetype.MatchReader(tee)
+	if err != nil {
+		return err
+	}
 
 	// Finish reading the tee
 	ioutil.ReadAll(tee)
