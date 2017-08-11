@@ -1,5 +1,9 @@
 Extract
 =====================
+[![Build Status](https://travis-ci.org/codeclysm/extract.svg?branch=master)](https://travis-ci.org/codeclysm/extract)
+[![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/codeclysm/extract/master/LICENSE)
+[![Godoc Reference](https://img.shields.io/badge/Godoc-Reference-blue.svg)](https://godoc.org/github.com/codeclysm/extract)
+
 
     import "github.com/codeclysm/extract"
 
@@ -28,50 +32,8 @@ var shift = func(path string) string {
 extract.TarBz2(data, "/path/where/to/extract", shift)
 ```
 
-
-
-Functions
----------
-
+If you don't know which archive you're dealing with (life really is always a surprise) you can use Archive, which will infer the type of archive from the first bytes
 
 ```go
-func Tar(body io.Reader, location string, rename Renamer) error
+extract.Archive(data, "/path/where/to/extract", nil)
 ```
-
-Tar extracts a .tar archived stream of data in the specified location. It
-accepts a rename function to handle the names of the files (see the example)
-
-
-```go
-func TarBz2(body io.Reader, location string, rename Renamer) error
-```
-
-TarBz2 extracts a .tar.bz2 archived stream of data in the specified location. It
-accepts a rename function to handle the names of the files (see the example)
-
-
-```go
-func TarGz(body io.Reader, location string, rename Renamer) error
-```
-
-TarGz extracts a .tar.gz archived stream of data in the specified location. It
-accepts a rename function to handle the names of the files (see the example)
-
-
-```go
-func Zip(body io.Reader, location string, rename Renamer) error
-```
-
-Zip extracts a .zip archived stream of data in the specified location. It
-accepts a rename function to handle the names of the files (see the example).
-
-Types
------
-
-
-```go
-type Renamer func(string) string
-```
-Renamer is a function that can be used to rename the files when you're
-extracting them. For example you may want to only extract files with a certain
-pattern. If you return an empty string they won't be extracted.

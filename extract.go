@@ -4,20 +4,26 @@
 // Most of the time you'll just need to call the proper function with a buffer and
 // a destination:
 //
-//     data, _ := ioutil.ReadFile("path/to/file.tar.bz2")
-//     buffer := bytes.NewBuffer(data)
-//     extract.TarBz2(data, "/path/where/to/extract", nil)
+// 	data, _ := ioutil.ReadFile("path/to/file.tar.bz2")
+// 	buffer := bytes.NewBuffer(data)
+// 	extract.TarBz2(data, "/path/where/to/extract", nil)
+// ```
 //
-// Sometimes you'll want a bit more control over the files, such as extracting
-// a subfolder of the archive. In this cases you can specify a renamer	func
-// that will change the path for every file:
+// Sometimes you'll want a bit more control over the files, such as extracting a
+// subfolder of the archive. In this cases you can specify a renamer func that will
+// change the path for every file:
 //
-//      var shift = func(path string) string {
-//          parts := strings.Split(path, string(filepath.Separator))
-//          parts = parts[1:]
-//          return strings.Join(parts, string(filepath.Separator))
-//      }
-//      extract.TarBz2(data, "/path/where/to/extract", shift)
+// 	var shift = func(path string) string {
+//		parts := strings.Split(path, string(filepath.Separator))
+//		parts = parts[1:]
+//		return strings.Join(parts, string(filepath.Separator))
+//	}
+//	extract.TarBz2(data, "/path/where/to/extract", shift)
+// ```
+//
+// If you don't know which archive you're dealing with (life really is always a surprise) you can use Archive, which will infer the type of archive from the first bytes
+//
+// 	extract.Archive(data, "/path/where/to/extract", nil)
 package extract
 
 import (
