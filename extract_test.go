@@ -116,7 +116,7 @@ func TestExtract(t *testing.T) {
 		var err error
 		switch filepath.Ext(test.Archive) {
 		case ".bz2":
-			err = extract.TarBz2(buffer, dir, test.Renamer)
+			err = extract.Bz2(buffer, dir, test.Renamer)
 		case ".gz":
 			err = extract.TarGz(buffer, dir, test.Renamer)
 		case ".zip":
@@ -188,7 +188,7 @@ func BenchmarkTarBz2(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		buffer := bytes.NewBuffer(data)
-		err := extract.TarBz2(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		err := extract.Bz2(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
 		if err != nil {
 			b.Error(err)
 		}

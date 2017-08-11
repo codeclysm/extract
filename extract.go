@@ -31,6 +31,8 @@ import (
 	"os"
 	"path/filepath"
 
+	filetype "gopkg.in/h2non/filetype.v1"
+
 	"github.com/juju/errors"
 )
 
@@ -39,11 +41,22 @@ import (
 // If you return an empty string they won't be extracted.
 type Renamer func(string) string
 
-// TarBz2 extracts a .tar.bz2 archived stream of data in the specified location.
+// Bz2 extracts a .bz2 or .tar.bz2 archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
-func TarBz2(body io.Reader, location string, rename Renamer) error {
+func Bz2(body io.Reader, location string, rename Renamer) error {
 	reader := bzip2.NewReader(body)
-	return Tar(reader, location, rename)
+
+	var inner bytes.Buffer
+	tee := io.TeeReader(reader, &inner)
+	kind, _ := filetype.MatchReader(tee)
+
+	// Finish reading the tee
+	ioutil.ReadAll(tee)
+
+	if kind.Extension == "tar" {
+		return Tar(&inner, location, rename)
+	}
+	return copy(location, 0666, &inner)
 }
 
 // TarGz extracts a .tar.gz archived stream of data in the specified location.
@@ -53,6 +66,7 @@ func TarGz(body io.Reader, location string, rename Renamer) error {
 	if err != nil {
 		return errors.Annotatef(err, "Gunzip")
 	}
+
 	return Tar(reader, location, rename)
 }
 
