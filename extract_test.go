@@ -119,6 +119,40 @@ var ExtractCases = []struct {
 		"/archive/folder/file1.txt": "folder/File1",
 		"/archive/folderlink":       "link",
 	}},
+
+	{"standard inferred", "testdata/archive.mistery", nil, Files{
+		"":                          "dir",
+		"/archive":                  "dir",
+		"/archive/folder":           "dir",
+		"/archive/folderlink":       "link",
+		"/archive/folder/file1.txt": "folder/File1",
+		"/archive/file1.txt":        "File1",
+		"/archive/file2.txt":        "File2",
+		"/archive/link.txt":         "File1",
+	}},
+	{"shift inferred", "testdata/archive.mistery", shift, Files{
+		"":                  "dir",
+		"/folder":           "dir",
+		"/folderlink":       "link",
+		"/folder/file1.txt": "folder/File1",
+		"/file1.txt":        "File1",
+		"/file2.txt":        "File2",
+		"/link.txt":         "File1",
+	}},
+	{"subfolder inferred", "testdata/archive.mistery", subfolder, Files{
+		"":                          "dir",
+		"/archive":                  "dir",
+		"/archive/folder":           "dir",
+		"/archive/folder/file1.txt": "folder/File1",
+		"/archive/folderlink":       "link",
+	}},
+}
+
+func TestArchiveFailure(t *testing.T) {
+	err := extract.Archive(strings.NewReader("not an archive"), "", nil)
+	if err == nil || err.Error() != "Not a supported archive" {
+		t.Error("Expected error 'Not a supported archive', got", err)
+	}
 }
 
 func TestExtract(t *testing.T) {
@@ -138,10 +172,14 @@ func TestExtract(t *testing.T) {
 			err = extract.Gz(buffer, dir, test.Renamer)
 		case ".zip":
 			err = extract.Zip(buffer, dir, test.Renamer)
+		case ".mistery":
+			err = extract.Archive(buffer, dir, test.Renamer)
+		default:
+			t.Fatal("unknown error")
 		}
 
 		if err != nil {
-			t.Error(test.Name, ": Should not fail: "+err.Error())
+			t.Fatal(test.Name, ": Should not fail: "+err.Error())
 		}
 
 		files := Files{}
@@ -194,6 +232,28 @@ func TestExtract(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func BenchmarkArchive(b *testing.B) {
+	dir, _ := ioutil.TempDir("", "")
+	data, _ := ioutil.ReadFile("testdata/archive.tar.bz2")
+
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		buffer := bytes.NewBuffer(data)
+		err := extract.Archive(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+
+	b.StopTimer()
+
+	err := os.RemoveAll(dir)
+	if err != nil {
+		b.Error(err)
 	}
 }
 
