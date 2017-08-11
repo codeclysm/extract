@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -182,32 +183,65 @@ func TestExtract(t *testing.T) {
 func BenchmarkTarBz2(b *testing.B) {
 	dir, _ := ioutil.TempDir("", "")
 	data, _ := ioutil.ReadFile("testdata/archive.tar.bz2")
-	buffer := bytes.NewBuffer(data)
+
+	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		extract.TarBz2(buffer, dir, nil)
-		os.Remove(dir)
+		buffer := bytes.NewBuffer(data)
+		err := extract.TarBz2(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+
+	b.StopTimer()
+
+	err := os.RemoveAll(dir)
+	if err != nil {
+		b.Error(err)
 	}
 }
 
 func BenchmarkTarGz(b *testing.B) {
 	dir, _ := ioutil.TempDir("", "")
 	data, _ := ioutil.ReadFile("testdata/archive.tar.gz")
-	buffer := bytes.NewBuffer(data)
+
+	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		extract.TarGz(buffer, dir, nil)
-		os.Remove(dir)
+		buffer := bytes.NewBuffer(data)
+		err := extract.TarGz(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+
+	b.StopTimer()
+
+	err := os.RemoveAll(dir)
+	if err != nil {
+		b.Error(err)
 	}
 }
 
 func BenchmarkZip(b *testing.B) {
 	dir, _ := ioutil.TempDir("", "")
 	data, _ := ioutil.ReadFile("testdata/archive.zip")
-	buffer := bytes.NewBuffer(data)
+
+	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		extract.Zip(buffer, dir, nil)
-		os.Remove(dir)
+		buffer := bytes.NewBuffer(data)
+		err := extract.Zip(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		if err != nil {
+			b.Error(err)
+		}
+	}
+
+	b.StopTimer()
+
+	err := os.RemoveAll(dir)
+	if err != nil {
+		b.Error(err)
 	}
 }
