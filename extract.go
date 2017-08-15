@@ -38,6 +38,7 @@ import (
 	"path/filepath"
 
 	filetype "gopkg.in/h2non/filetype.v1"
+	"gopkg.in/h2non/filetype.v1/types"
 
 	"github.com/juju/errors"
 )
@@ -52,21 +53,20 @@ type Renamer func(string) string
 // handle the names of the files.
 // If the file is not an archive, an error is returned.
 func Archive(body io.Reader, location string, rename Renamer) error {
-	var archive bytes.Buffer
-	tee := io.TeeReader(body, &archive)
-	kind, err := filetype.MatchReader(tee)
+	body, kind, err := match(body)
 	if err != nil {
 		errors.Annotatef(err, "Detect archive type")
 	}
+
 	switch kind.Extension {
 	case "zip":
-		return Zip(&archive, location, rename)
+		return Zip(body, location, rename)
 	case "gz":
-		return Gz(&archive, location, rename)
+		return Gz(body, location, rename)
 	case "bz2":
-		return Bz2(&archive, location, rename)
+		return Bz2(body, location, rename)
 	case "tar":
-		return Tar(&archive, location, rename)
+		return Tar(body, location, rename)
 	default:
 		return errors.New("Not a supported archive")
 	}
@@ -77,21 +77,16 @@ func Archive(body io.Reader, location string, rename Renamer) error {
 func Bz2(body io.Reader, location string, rename Renamer) error {
 	reader := bzip2.NewReader(body)
 
-	var inner bytes.Buffer
-	tee := io.TeeReader(reader, &inner)
-	kind, err := filetype.MatchReader(tee)
+	body, kind, err := match(reader)
 	if err != nil {
-		return err
+		return errors.Annotatef(err, "extract bz2: detect")
 	}
-
-	// Finish reading the tee
-	ioutil.ReadAll(tee)
 
 	if kind.Extension == "tar" {
-		return Tar(&inner, location, rename)
+		return Tar(body, location, rename)
 	}
 
-	err = copy(location, 0666, &inner)
+	err = copy(location, 0666, body)
 	if err != nil {
 		return err
 	}
@@ -106,23 +101,15 @@ func Gz(body io.Reader, location string, rename Renamer) error {
 		return errors.Annotatef(err, "Gunzip")
 	}
 
-	var inner bytes.Buffer
-	tee := io.TeeReader(reader, &inner)
-	kind, err := filetype.MatchReader(tee)
+	body, kind, err := match(reader)
 	if err != nil {
 		return err
 	}
 
-	// Finish reading the tee
-	ioutil.ReadAll(tee)
-
-	// Finish reading the tee
-	ioutil.ReadAll(tee)
-
 	if kind.Extension == "tar" {
-		return Tar(&inner, location, rename)
+		return Tar(body, location, rename)
 	}
-	err = copy(location, 0666, &inner)
+	err = copy(location, 0666, body)
 	if err != nil {
 		return err
 	}
@@ -304,4 +291,21 @@ func copy(path string, mode os.FileMode, src io.Reader) error {
 	defer file.Close()
 	_, err = io.Copy(file, src)
 	return err
+}
+
+// match reads the first 512 bytes, calls types.Match and returns a reader
+// for the whole stream
+func match(r io.Reader) (io.Reader, types.Type, error) {
+	buffer := make([]byte, 512)
+
+	n, err := r.Read(buffer)
+	if err != nil && err != io.EOF {
+		return nil, types.Unknown, err
+	}
+
+	r = io.MultiReader(bytes.NewBuffer(buffer[:n]), r)
+
+	typ, err := filetype.Match(buffer)
+
+	return r, typ, err
 }
