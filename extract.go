@@ -53,6 +53,14 @@ type Renamer func(string) string
 // handle the names of the files.
 // If the file is not an archive, an error is returned.
 func Archive(body io.Reader, location string, rename Renamer) error {
+	dummy := make(chan bool, 1)
+	defer close(dummy)
+	return ArchiveCancel(body, location, rename, dummy)
+}
+
+// ArchiveCancel is the same as Archive but with an extra channel to stop
+// the extraction.
+func ArchiveCancel(body io.Reader, location string, rename Renamer, cancel <-chan bool) error {
 	body, kind, err := match(body)
 	if err != nil {
 		errors.Annotatef(err, "Detect archive type")
@@ -60,13 +68,13 @@ func Archive(body io.Reader, location string, rename Renamer) error {
 
 	switch kind.Extension {
 	case "zip":
-		return Zip(body, location, rename)
+		return ZipCancel(body, location, rename, cancel)
 	case "gz":
-		return Gz(body, location, rename)
+		return GzCancel(body, location, rename, cancel)
 	case "bz2":
-		return Bz2(body, location, rename)
+		return Bz2Cancel(body, location, rename, cancel)
 	case "tar":
-		return Tar(body, location, rename)
+		return TarCancel(body, location, rename, cancel)
 	default:
 		return errors.New("Not a supported archive")
 	}
@@ -75,6 +83,13 @@ func Archive(body io.Reader, location string, rename Renamer) error {
 // Bz2 extracts a .bz2 or .tar.bz2 archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Bz2(body io.Reader, location string, rename Renamer) error {
+	dummy := make(chan bool, 1)
+	defer close(dummy)
+	return Bz2Cancel(body, location, rename, dummy)
+}
+
+// Bz2Cancel is the same as Bz2 but with an extra channel to stop the extraction.
+func Bz2Cancel(body io.Reader, location string, rename Renamer, cancel <-chan bool) error {
 	reader := bzip2.NewReader(body)
 
 	body, kind, err := match(reader)
@@ -83,10 +98,10 @@ func Bz2(body io.Reader, location string, rename Renamer) error {
 	}
 
 	if kind.Extension == "tar" {
-		return Tar(body, location, rename)
+		return TarCancel(body, location, rename, cancel)
 	}
 
-	err = copy(location, 0666, body)
+	err = copy(location, 0666, body, cancel)
 	if err != nil {
 		return err
 	}
@@ -96,6 +111,13 @@ func Bz2(body io.Reader, location string, rename Renamer) error {
 // Gz extracts a .gz or .tar.gz archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Gz(body io.Reader, location string, rename Renamer) error {
+	dummy := make(chan bool, 1)
+	defer close(dummy)
+	return GzCancel(body, location, rename, dummy)
+}
+
+// GzCancel is the same as Gz but with an extra channel to stop the extraction.
+func GzCancel(body io.Reader, location string, rename Renamer, cancel <-chan bool) error {
 	reader, err := gzip.NewReader(body)
 	if err != nil {
 		return errors.Annotatef(err, "Gunzip")
@@ -107,9 +129,9 @@ func Gz(body io.Reader, location string, rename Renamer) error {
 	}
 
 	if kind.Extension == "tar" {
-		return Tar(body, location, rename)
+		return TarCancel(body, location, rename, cancel)
 	}
-	err = copy(location, 0666, body)
+	err = copy(location, 0666, body, cancel)
 	if err != nil {
 		return err
 	}
@@ -129,6 +151,13 @@ type link struct {
 // Tar extracts a .tar archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Tar(body io.Reader, location string, rename Renamer) error {
+	dummy := make(chan bool, 1)
+	defer close(dummy)
+	return TarCancel(body, location, rename, dummy)
+}
+
+// TarCancel is the same as Tar but with an extra channel to stop the extraction.
+func TarCancel(body io.Reader, location string, rename Renamer, cancel <-chan bool) error {
 	files := []file{}
 	links := []link{}
 	symlinks := []link{}
@@ -137,6 +166,12 @@ func Tar(body io.Reader, location string, rename Renamer) error {
 	// attempting to create a file where there's no folder
 	tr := tar.NewReader(body)
 	for {
+		select {
+		case <-cancel:
+			return errors.New("interrupted")
+		default:
+		}
+
 		header, err := tr.Next()
 		if err == io.EOF {
 			break
@@ -165,7 +200,7 @@ func Tar(body io.Reader, location string, rename Renamer) error {
 			}
 		case tar.TypeReg, tar.TypeRegA:
 			var data bytes.Buffer
-			if _, err := io.Copy(&data, tr); err != nil {
+			if _, err := copyCancel(&data, tr, cancel); err != nil {
 				return errors.Annotatef(err, "Read contents of file %s", path)
 			}
 			files = append(files, file{Path: path, Mode: info.Mode(), Data: data})
@@ -184,18 +219,28 @@ func Tar(body io.Reader, location string, rename Renamer) error {
 
 	// Now we make another pass creating the files and links
 	for i := range files {
-		if err := copy(files[i].Path, files[i].Mode, &files[i].Data); err != nil {
+		if err := copy(files[i].Path, files[i].Mode, &files[i].Data, cancel); err != nil {
 			return errors.Annotatef(err, "Create file %s", files[i].Path)
 		}
 	}
 
 	for i := range links {
+		select {
+		case <-cancel:
+			return errors.New("interrupted")
+		default:
+		}
 		if err := os.Link(links[i].Name, links[i].Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", links[i].Path)
 		}
 	}
 
 	for i := range symlinks {
+		select {
+		case <-cancel:
+			return errors.New("interrupted")
+		default:
+		}
 		if err := os.Symlink(symlinks[i].Name, symlinks[i].Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", symlinks[i].Path)
 		}
@@ -206,9 +251,16 @@ func Tar(body io.Reader, location string, rename Renamer) error {
 // Zip extracts a .zip archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example).
 func Zip(body io.Reader, location string, rename Renamer) error {
+	dummy := make(chan bool, 1)
+	defer close(dummy)
+	return ZipCancel(body, location, rename, dummy)
+}
+
+// ZipCancel is the same as Bz2 but with an extra channel to stop the extraction.
+func ZipCancel(body io.Reader, location string, rename Renamer, cancel <-chan bool) error {
 	// read the whole body into a buffer. Not sure this is the best way to do it
 	buffer := bytes.NewBuffer([]byte{})
-	io.Copy(buffer, body)
+	copyCancel(buffer, body, cancel)
 
 	archive, err := zip.NewReader(bytes.NewReader(buffer.Bytes()), int64(buffer.Len()))
 	if err != nil {
@@ -221,6 +273,12 @@ func Zip(body io.Reader, location string, rename Renamer) error {
 	// We make the first pass creating the directory structure, or we could end up
 	// attempting to create a file where there's no folder
 	for _, header := range archive.File {
+		select {
+		case <-cancel:
+			return errors.New("interrupted")
+		default:
+		}
+
 		path := header.Name
 		if rename != nil {
 			path = rename(path)
@@ -255,7 +313,7 @@ func Zip(body io.Reader, location string, rename Renamer) error {
 				return errors.Annotatef(err, "Open file %s", path)
 			}
 			var data bytes.Buffer
-			if _, err := io.Copy(&data, f); err != nil {
+			if _, err := copyCancel(&data, f, cancel); err != nil {
 				return errors.Annotatef(err, "Read contents of file %s", path)
 			}
 			files = append(files, file{Path: path, Mode: info.Mode(), Data: data})
@@ -264,12 +322,17 @@ func Zip(body io.Reader, location string, rename Renamer) error {
 
 	// Now we make another pass creating the files and links
 	for i := range files {
-		if err := copy(files[i].Path, files[i].Mode, &files[i].Data); err != nil {
+		if err := copy(files[i].Path, files[i].Mode, &files[i].Data, cancel); err != nil {
 			return errors.Annotatef(err, "Create file %s", files[i].Path)
 		}
 	}
 
 	for i := range links {
+		select {
+		case <-cancel:
+			return errors.New("interrupted")
+		default:
+		}
 		if err := os.Symlink(links[i].Name, links[i].Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", links[i].Path)
 		}
@@ -278,7 +341,7 @@ func Zip(body io.Reader, location string, rename Renamer) error {
 	return nil
 }
 
-func copy(path string, mode os.FileMode, src io.Reader) error {
+func copy(path string, mode os.FileMode, src io.Reader, cancel <-chan bool) error {
 	// We add the execution permission to be able to create files inside it
 	err := os.MkdirAll(filepath.Dir(path), mode|os.ModeDir|100)
 	if err != nil {
@@ -289,7 +352,7 @@ func copy(path string, mode os.FileMode, src io.Reader) error {
 		return err
 	}
 	defer file.Close()
-	_, err = io.Copy(file, src)
+	_, err = copyCancel(file, src, cancel)
 	return err
 }
 
