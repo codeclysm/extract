@@ -2,6 +2,7 @@ package extract_test
 
 import (
 	"bytes"
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -149,7 +150,7 @@ var ExtractCases = []struct {
 }
 
 func TestArchiveFailure(t *testing.T) {
-	err := extract.Archive(strings.NewReader("not an archive"), "", nil)
+	err := extract.Archive(context.Background(), strings.NewReader("not an archive"), "", nil)
 	if err == nil || err.Error() != "Not a supported archive" {
 		t.Error("Expected error 'Not a supported archive', got", err)
 	}
@@ -167,13 +168,13 @@ func TestExtract(t *testing.T) {
 
 		switch filepath.Ext(test.Archive) {
 		case ".bz2":
-			err = extract.Bz2(buffer, dir, test.Renamer)
+			err = extract.Bz2(context.Background(), buffer, dir, test.Renamer)
 		case ".gz":
-			err = extract.Gz(buffer, dir, test.Renamer)
+			err = extract.Gz(context.Background(), buffer, dir, test.Renamer)
 		case ".zip":
-			err = extract.Zip(buffer, dir, test.Renamer)
+			err = extract.Zip(context.Background(), buffer, dir, test.Renamer)
 		case ".mistery":
-			err = extract.Archive(buffer, dir, test.Renamer)
+			err = extract.Archive(context.Background(), buffer, dir, test.Renamer)
 		default:
 			t.Fatal("unknown error")
 		}
@@ -243,7 +244,7 @@ func BenchmarkArchive(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		buffer := bytes.NewBuffer(data)
-		err := extract.Archive(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		err := extract.Archive(context.Background(), buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
 		if err != nil {
 			b.Error(err)
 		}
@@ -265,7 +266,7 @@ func BenchmarkTarBz2(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		buffer := bytes.NewBuffer(data)
-		err := extract.Bz2(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		err := extract.Bz2(context.Background(), buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
 		if err != nil {
 			b.Error(err)
 		}
@@ -287,7 +288,7 @@ func BenchmarkTarGz(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		buffer := bytes.NewBuffer(data)
-		err := extract.Gz(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		err := extract.Gz(context.Background(), buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
 		if err != nil {
 			b.Error(err)
 		}
@@ -309,7 +310,7 @@ func BenchmarkZip(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		buffer := bytes.NewBuffer(data)
-		err := extract.Zip(buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
+		err := extract.Zip(context.Background(), buffer, filepath.Join(dir, strconv.Itoa(i)), nil)
 		if err != nil {
 			b.Error(err)
 		}
