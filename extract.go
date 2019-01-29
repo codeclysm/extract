@@ -38,8 +38,8 @@ import (
 	"os"
 	"path/filepath"
 
-	filetype "gopkg.in/h2non/filetype.v1"
-	"gopkg.in/h2non/filetype.v1/types"
+	filetype "github.com/h2non/filetype"
+	"github.com/h2non/filetype/types"
 
 	"github.com/juju/errors"
 )
