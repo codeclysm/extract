@@ -37,6 +37,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	filetype "github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
@@ -245,6 +246,15 @@ func Zip(ctx context.Context, body io.Reader, location string, rename Renamer) e
 		}
 
 		path := header.Name
+
+		// Replace backslash with forward slash. There are archives in the wild made with
+		// buggy compressors that use backslash as path separator. The ZIP format explicitly
+		// denies the use of "\" so we just replace it with slash "/".
+		// Moreover it seems that folders are stored as "files" but with a final "\" in the
+		// filename... oh, well...
+		forceDir := strings.HasSuffix(path, "\\")
+		path = strings.Replace(path, "\\", "/", -1)
+
 		if rename != nil {
 			path = rename(path)
 		}
@@ -257,7 +267,7 @@ func Zip(ctx context.Context, body io.Reader, location string, rename Renamer) e
 		info := header.FileInfo()
 
 		switch {
-		case info.IsDir():
+		case info.IsDir() || forceDir:
 			if err := os.MkdirAll(path, info.Mode()|os.ModeDir|100); err != nil {
 				return errors.Annotatef(err, "Create directory %s", path)
 			}
