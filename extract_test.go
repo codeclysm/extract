@@ -147,6 +147,30 @@ var ExtractCases = []struct {
 		"/archive/folder/file1.txt": "folder/File1",
 		"/archive/folderlink":       "link",
 	}},
+
+	{"standard zip with backslashes", "testdata/archive-with-backslashes.zip", nil, Files{
+		"":                           "dir",
+		"/AZ3166":                    "dir",
+		"/AZ3166/libraries":          "dir",
+		"/AZ3166/libraries/AzureIoT": "dir",
+		"/AZ3166/libraries/AzureIoT/keywords.txt": "Azure",
+		"/AZ3166/cores":                                   "dir",
+		"/AZ3166/cores/arduino":                           "dir",
+		"/AZ3166/cores/arduino/azure-iot-sdk-c":           "dir",
+		"/AZ3166/cores/arduino/azure-iot-sdk-c/umqtt":     "dir",
+		"/AZ3166/cores/arduino/azure-iot-sdk-c/umqtt/src": "dir",
+	}},
+	{"shift zip with backslashes", "testdata/archive-with-backslashes.zip", shift, Files{
+		"":                                     "dir",
+		"/libraries":                           "dir",
+		"/libraries/AzureIoT":                  "dir",
+		"/libraries/AzureIoT/keywords.txt":     "Azure",
+		"/cores":                               "dir",
+		"/cores/arduino":                       "dir",
+		"/cores/arduino/azure-iot-sdk-c":       "dir",
+		"/cores/arduino/azure-iot-sdk-c/umqtt": "dir",
+		"/cores/arduino/azure-iot-sdk-c/umqtt/src": "dir",
+	}},
 }
 
 func TestArchiveFailure(t *testing.T) {
