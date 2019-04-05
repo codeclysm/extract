@@ -149,11 +149,11 @@ var ExtractCases = []struct {
 	}},
 
 	{"standard zip with backslashes", "testdata/archive-with-backslashes.zip", nil, Files{
-		"":                           "dir",
-		"/AZ3166":                    "dir",
-		"/AZ3166/libraries":          "dir",
-		"/AZ3166/libraries/AzureIoT": "dir",
-		"/AZ3166/libraries/AzureIoT/keywords.txt": "Azure",
+		"":                                                "dir",
+		"/AZ3166":                                         "dir",
+		"/AZ3166/libraries":                               "dir",
+		"/AZ3166/libraries/AzureIoT":                      "dir",
+		"/AZ3166/libraries/AzureIoT/keywords.txt":         "Azure",
 		"/AZ3166/cores":                                   "dir",
 		"/AZ3166/cores/arduino":                           "dir",
 		"/AZ3166/cores/arduino/azure-iot-sdk-c":           "dir",
@@ -161,14 +161,14 @@ var ExtractCases = []struct {
 		"/AZ3166/cores/arduino/azure-iot-sdk-c/umqtt/src": "dir",
 	}},
 	{"shift zip with backslashes", "testdata/archive-with-backslashes.zip", shift, Files{
-		"":                                     "dir",
-		"/libraries":                           "dir",
-		"/libraries/AzureIoT":                  "dir",
-		"/libraries/AzureIoT/keywords.txt":     "Azure",
-		"/cores":                               "dir",
-		"/cores/arduino":                       "dir",
-		"/cores/arduino/azure-iot-sdk-c":       "dir",
-		"/cores/arduino/azure-iot-sdk-c/umqtt": "dir",
+		"":                                 "dir",
+		"/libraries":                       "dir",
+		"/libraries/AzureIoT":              "dir",
+		"/libraries/AzureIoT/keywords.txt": "Azure",
+		"/cores":                                   "dir",
+		"/cores/arduino":                           "dir",
+		"/cores/arduino/azure-iot-sdk-c":           "dir",
+		"/cores/arduino/azure-iot-sdk-c/umqtt":     "dir",
 		"/cores/arduino/azure-iot-sdk-c/umqtt/src": "dir",
 	}},
 }
@@ -207,51 +207,7 @@ func TestExtract(t *testing.T) {
 			t.Fatal(test.Name, ": Should not fail: "+err.Error())
 		}
 
-		files := Files{}
-
-		filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-			path = strings.Replace(path, dir, "", 1)
-
-			if info.IsDir() {
-				files[path] = "dir"
-			} else if info.Mode()&os.ModeSymlink != 0 {
-				files[path] = "link"
-			} else {
-				data, err := ioutil.ReadFile(filepath.Join(dir, path))
-				if err != nil {
-
-				}
-				files[path] = strings.TrimSpace(string(data))
-			}
-
-			return nil
-		})
-
-		for file, kind := range files {
-			k, ok := test.Files[file]
-			if !ok {
-				t.Error(test.Name, ": "+file+" should not exist")
-				continue
-			}
-
-			if kind != k {
-				t.Error(test.Name, ": "+file+" should be "+k+", not "+kind)
-				continue
-			}
-		}
-
-		for file, kind := range test.Files {
-			k, ok := files[file]
-			if !ok {
-				t.Error(test.Name, ": "+file+" should exist")
-				continue
-			}
-
-			if kind != k {
-				t.Error(test.Name, ": "+file+" should be "+kind+", not "+k)
-				continue
-			}
-		}
+		testWalk(t, dir, test.Files)
 
 		err = os.RemoveAll(dir)
 		if err != nil {
@@ -345,5 +301,52 @@ func BenchmarkZip(b *testing.B) {
 	err := os.RemoveAll(dir)
 	if err != nil {
 		b.Error(err)
+	}
+}
+
+func testWalk(t *testing.T, dir string, testFiles Files) {
+	files := Files{}
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		path = strings.Replace(path, dir, "", 1)
+
+		if info.IsDir() {
+			files[path] = "dir"
+		} else if info.Mode()&os.ModeSymlink != 0 {
+			files[path] = "link"
+		} else {
+			data, err := ioutil.ReadFile(filepath.Join(dir, path))
+			if err != nil {
+
+			}
+			files[path] = strings.TrimSpace(string(data))
+		}
+
+		return nil
+	})
+
+	for file, kind := range files {
+		k, ok := testFiles[file]
+		if !ok {
+			t.Error(file + " should not exist")
+			continue
+		}
+
+		if kind != k {
+			t.Error(file + " should be " + k + ", not " + kind)
+			continue
+		}
+	}
+
+	for file, kind := range testFiles {
+		k, ok := files[file]
+		if !ok {
+			t.Error(file + " should exist")
+			continue
+		}
+
+		if kind != k {
+			t.Error(file + " should be " + kind + ", not " + k)
+			continue
+		}
 	}
 }
