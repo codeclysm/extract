@@ -100,7 +100,6 @@ func (e *Extractor) Gz(ctx context.Context, body io.Reader, location string, ren
 // Tar extracts a .tar archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	files := []file{}
 	links := []link{}
 	symlinks := []link{}
 
@@ -148,7 +147,9 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 			if _, err := copyCancel(ctx, &data, tr); err != nil {
 				return errors.Annotatef(err, "Read contents of file %s", path)
 			}
-			files = append(files, file{Path: path, Mode: info.Mode(), Data: data})
+			if err := e.copy(ctx, path, info.Mode(), &data); err != nil {
+				return errors.Annotatef(err, "Create file %s", path)
+			}
 		case tar.TypeLink:
 			name := header.Linkname
 			if rename != nil {
@@ -162,13 +163,7 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 		}
 	}
 
-	// Now we make another pass creating the files and links
-	for i := range files {
-		if err := e.copy(ctx, files[i].Path, files[i].Mode, &files[i].Data); err != nil {
-			return errors.Annotatef(err, "Create file %s", files[i].Path)
-		}
-	}
-
+	// Now we make another pass creating the links
 	for i := range links {
 		select {
 		case <-ctx.Done():
