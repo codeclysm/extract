@@ -140,11 +140,7 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 				return errors.Annotatef(err, "Create directory %s", path)
 			}
 		case tar.TypeReg, tar.TypeRegA:
-			var data bytes.Buffer
-			if _, err := copyCancel(ctx, &data, tr); err != nil {
-				return errors.Annotatef(err, "Read contents of file %s", path)
-			}
-			if err := e.copy(ctx, path, info.Mode(), &data); err != nil {
+			if err := e.copy(ctx, path, info.Mode(), tr); err != nil {
 				return errors.Annotatef(err, "Create file %s", path)
 			}
 		case tar.TypeLink:
