@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/codeclysm/extract"
+	"github.com/codeclysm/extract/v3"
 )
 
 func TestExtractor_Tar(t *testing.T) {

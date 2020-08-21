@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/codeclysm/extract"
+	"github.com/codeclysm/extract/v3"
 )
 
 type Files map[string]string
@@ -149,11 +149,11 @@ var ExtractCases = []struct {
 	}},
 
 	{"standard zip with backslashes", "testdata/archive-with-backslashes.zip", nil, Files{
-		"":                                                "dir",
-		"/AZ3166":                                         "dir",
-		"/AZ3166/libraries":                               "dir",
-		"/AZ3166/libraries/AzureIoT":                      "dir",
-		"/AZ3166/libraries/AzureIoT/keywords.txt":         "Azure",
+		"":                           "dir",
+		"/AZ3166":                    "dir",
+		"/AZ3166/libraries":          "dir",
+		"/AZ3166/libraries/AzureIoT": "dir",
+		"/AZ3166/libraries/AzureIoT/keywords.txt": "Azure",
 		"/AZ3166/cores":                                   "dir",
 		"/AZ3166/cores/arduino":                           "dir",
 		"/AZ3166/cores/arduino/azure-iot-sdk-c":           "dir",
@@ -161,14 +161,14 @@ var ExtractCases = []struct {
 		"/AZ3166/cores/arduino/azure-iot-sdk-c/umqtt/src": "dir",
 	}},
 	{"shift zip with backslashes", "testdata/archive-with-backslashes.zip", shift, Files{
-		"":                                 "dir",
-		"/libraries":                       "dir",
-		"/libraries/AzureIoT":              "dir",
-		"/libraries/AzureIoT/keywords.txt": "Azure",
-		"/cores":                                   "dir",
-		"/cores/arduino":                           "dir",
-		"/cores/arduino/azure-iot-sdk-c":           "dir",
-		"/cores/arduino/azure-iot-sdk-c/umqtt":     "dir",
+		"":                                     "dir",
+		"/libraries":                           "dir",
+		"/libraries/AzureIoT":                  "dir",
+		"/libraries/AzureIoT/keywords.txt":     "Azure",
+		"/cores":                               "dir",
+		"/cores/arduino":                       "dir",
+		"/cores/arduino/azure-iot-sdk-c":       "dir",
+		"/cores/arduino/azure-iot-sdk-c/umqtt": "dir",
 		"/cores/arduino/azure-iot-sdk-c/umqtt/src": "dir",
 	}},
 }
