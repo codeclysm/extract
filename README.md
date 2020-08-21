@@ -5,7 +5,7 @@ Extract
 [![Godoc Reference](https://img.shields.io/badge/Godoc-Reference-blue.svg)](https://godoc.org/github.com/codeclysm/extract)
 
 
-    import "github.com/codeclysm/extract"
+    import "github.com/codeclysm/extract/v3"
 
 Package extract allows to extract archives in zip, tar.gz or tar.bz2 formats
 easily.
