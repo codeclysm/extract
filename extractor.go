@@ -132,6 +132,8 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 			continue
 		}
 
+		sanitizeExtractPath(path, location)
+
 		path = filepath.Join(location, path)
 		info := header.FileInfo()
 
@@ -315,4 +317,13 @@ func match(r io.Reader) (io.Reader, types.Type, error) {
 	typ, err := filetype.Match(buffer)
 
 	return r, typ, err
+}
+
+// useful to fix zip slip security vulnerability
+func sanitizeExtractPath(filePath string, destination string) error {
+	destpath := filepath.Join(destination, filePath)
+	if !strings.HasPrefix(destpath, filepath.Clean(destination)+string(os.PathSeparator)) {
+		errors.New("illegal file path")
+	}
+	return nil
 }
