@@ -3,7 +3,7 @@ module github.com/codeclysm/extract/v3
 go 1.14
 
 require (
-	github.com/arduino/go-paths-helper v1.2.0 // indirect
+	github.com/arduino/go-paths-helper v1.2.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/h2non/filetype v1.0.6
 	github.com/juju/errors v0.0.0-20181118221551-089d3ea4e4d5
