@@ -327,7 +327,7 @@ func match(r io.Reader) (io.Reader, types.Type, error) {
 // if the resulting path points outside of 'parent'.
 func safeJoin(parent, subdir string) (string, error) {
 	res := filepath.Join(parent, subdir)
-	if !strings.HasPrefix(parent, string(os.PathSeparator)) {
+	if !strings.HasSuffix(parent, string(os.PathSeparator)) {
 		parent += string(os.PathSeparator)
 	}
 	if !strings.HasPrefix(filepath.Clean(res), parent) {
