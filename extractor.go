@@ -330,7 +330,7 @@ func safeJoin(parent, subdir string) (string, error) {
 	if !strings.HasSuffix(parent, string(os.PathSeparator)) {
 		parent += string(os.PathSeparator)
 	}
-	if !strings.HasPrefix(filepath.Clean(res), parent) {
+	if !strings.HasPrefix(res, parent) {
 		return res, errors.Errorf("unsafe path join: '%s' with '%s'", parent, subdir)
 	}
 	return res, nil
