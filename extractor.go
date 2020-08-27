@@ -132,7 +132,10 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 			continue
 		}
 
-		path = filepath.Join(location, path)
+		if path, err = safeJoin(location, path); err != nil {
+			continue
+		}
+
 		info := header.FileInfo()
 
 		switch header.Typeflag {
@@ -232,7 +235,10 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 			continue
 		}
 
-		path = filepath.Join(location, path)
+		if path, err = safeJoin(location, path); err != nil {
+			continue
+		}
+
 		info := header.FileInfo()
 
 		switch {
@@ -315,4 +321,17 @@ func match(r io.Reader) (io.Reader, types.Type, error) {
 	typ, err := filetype.Match(buffer)
 
 	return r, typ, err
+}
+
+// safeJoin performs a filepath.Join of 'parent' and 'subdir' but returns an error
+// if the resulting path points outside of 'parent'.
+func safeJoin(parent, subdir string) (string, error) {
+	res := filepath.Join(parent, subdir)
+	if !strings.HasSuffix(parent, string(os.PathSeparator)) {
+		parent += string(os.PathSeparator)
+	}
+	if !strings.HasPrefix(res, parent) {
+		return res, errors.Errorf("unsafe path join: '%s' with '%s'", parent, subdir)
+	}
+	return res, nil
 }

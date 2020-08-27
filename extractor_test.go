@@ -3,12 +3,15 @@ package extract_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/codeclysm/extract/v3"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExtractor_Tar(t *testing.T) {
@@ -75,6 +78,40 @@ func TestExtractor_Zip(t *testing.T) {
 		"/archive/link.txt":         "File1",
 	}
 	testWalk(t, tmp, files)
+}
+
+func TestZipSlipHardening(t *testing.T) {
+	{
+		logger := &LoggingFS{}
+		extractor := extract.Extractor{FS: logger}
+		data, err := os.Open("testdata/zipslip/evil.zip")
+		require.NoError(t, err)
+		require.NoError(t, extractor.Zip(context.Background(), data, "/tmp/test", nil))
+		require.NoError(t, data.Close())
+		fmt.Print(logger)
+		require.Empty(t, logger.Journal)
+	}
+	{
+		logger := &LoggingFS{}
+		extractor := extract.Extractor{FS: logger}
+		data, err := os.Open("testdata/zipslip/evil.tar")
+		require.NoError(t, err)
+		require.NoError(t, extractor.Tar(context.Background(), data, "/tmp/test", nil))
+		require.NoError(t, data.Close())
+		fmt.Print(logger)
+		require.Empty(t, logger.Journal)
+	}
+
+	if runtime.GOOS == "windows" {
+		logger := &LoggingFS{}
+		extractor := extract.Extractor{FS: logger}
+		data, err := os.Open("testdata/zipslip/evil-win.tar")
+		require.NoError(t, err)
+		require.NoError(t, extractor.Tar(context.Background(), data, "/tmp/test", nil))
+		require.NoError(t, data.Close())
+		fmt.Print(logger)
+		require.Empty(t, logger.Journal)
+	}
 }
 
 // MockDisk is a disk that chroots to a directory
