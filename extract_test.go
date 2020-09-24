@@ -3,14 +3,20 @@ package extract_test
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/arduino/go-paths-helper"
 	"github.com/codeclysm/extract/v3"
+	"github.com/stretchr/testify/require"
 )
 
 type Files map[string]string
@@ -349,4 +355,54 @@ func testWalk(t *testing.T, dir string, testFiles Files) {
 			continue
 		}
 	}
+}
+
+func TestTarGzMemoryConsumption(t *testing.T) {
+	archive := paths.New("testdata/big.tar.gz")
+	err := download(t, "http://downloads.arduino.cc/gcc-arm-none-eabi-4.8.3-2014q1-windows.tar.gz", archive)
+	require.NoError(t, err)
+
+	tmpDir, err := paths.MkTempDir("", "")
+	require.NoError(t, err)
+	defer tmpDir.RemoveAll()
+
+	f, err := archive.Open()
+	require.NoError(t, err)
+
+	var m, m2 runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&m)
+
+	err = extract.Gz(context.Background(), f, tmpDir.String(), nil)
+	require.NoError(t, err)
+
+	runtime.ReadMemStats(&m2)
+	heapUsed := m2.HeapInuse - m.HeapInuse
+	fmt.Println("Heap memory used during the test:", heapUsed)
+	require.True(t, heapUsed < 5000000, "heap consumption should be less than 5M but is %d", heapUsed)
+}
+
+func download(t require.TestingT, url string, file *paths.Path) error {
+	if file.Exist() {
+		return nil
+	}
+
+	fmt.Printf("Downloading %s in %s\n", url, file)
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	out, err := file.Create()
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(out, resp.Body)
+	out.Close()
+	if err != nil {
+		file.Remove()
+	}
+	return err
 }
