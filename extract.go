@@ -27,7 +27,6 @@
 package extract
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"os"
@@ -70,11 +69,6 @@ func Gz(ctx context.Context, body io.Reader, location string, rename Renamer) er
 	return extractor.Gz(ctx, body, location, rename)
 }
 
-type file struct {
-	Path string
-	Mode os.FileMode
-	Data bytes.Buffer
-}
 type link struct {
 	Name string
 	Path string

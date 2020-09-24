@@ -196,7 +196,6 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 		return errors.Annotatef(err, "Read the zip file")
 	}
 
-	files := []file{}
 	links := []link{}
 
 	// We make the first pass creating the directory structure, or we could end up
@@ -239,35 +238,26 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 			}
 		// We only check for symlinks because hard links aren't possible
 		case info.Mode()&os.ModeSymlink != 0:
-			f, err := header.Open()
-			if err != nil {
+			if f, err := header.Open(); err != nil {
 				return errors.Annotatef(err, "Open link %s", path)
-			}
-			name, err := ioutil.ReadAll(f)
-			if err != nil {
+			} else if name, err := ioutil.ReadAll(f); err != nil {
 				return errors.Annotatef(err, "Read address of link %s", path)
+			} else {
+				links = append(links, link{Path: path, Name: string(name)})
+				f.Close()
 			}
-			links = append(links, link{Path: path, Name: string(name)})
 		default:
-			f, err := header.Open()
-			if err != nil {
+			if f, err := header.Open(); err != nil {
 				return errors.Annotatef(err, "Open file %s", path)
+			} else if err := e.copy(ctx, path, info.Mode(), f); err != nil {
+				return errors.Annotatef(err, "Create file %s", path)
+			} else {
+				f.Close()
 			}
-			var data bytes.Buffer
-			if _, err := copyCancel(ctx, &data, f); err != nil {
-				return errors.Annotatef(err, "Read contents of file %s", path)
-			}
-			files = append(files, file{Path: path, Mode: info.Mode(), Data: data})
 		}
 	}
 
-	// Now we make another pass creating the files and links
-	for i := range files {
-		if err := e.copy(ctx, files[i].Path, files[i].Mode, &files[i].Data); err != nil {
-			return errors.Annotatef(err, "Create file %s", files[i].Path)
-		}
-	}
-
+	// Now we make another pass creating the links
 	for i := range links {
 		select {
 		case <-ctx.Done():

@@ -382,6 +382,33 @@ func TestTarGzMemoryConsumption(t *testing.T) {
 	require.True(t, heapUsed < 5000000, "heap consumption should be less than 5M but is %d", heapUsed)
 }
 
+func TestZipMemoryConsumption(t *testing.T) {
+	archive := paths.New("testdata/big.zip")
+	err := download(t, "http://downloads.arduino.cc/tools/gcc-arm-none-eabi-7-2017-q4-major-win32-arduino1.zip", archive)
+	require.NoError(t, err)
+
+	tmpDir, err := paths.MkTempDir("", "")
+	require.NoError(t, err)
+	defer tmpDir.RemoveAll()
+
+	f, err := archive.Open()
+	require.NoError(t, err)
+
+	var m, m2 runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&m)
+
+	err = extract.Zip(context.Background(), f, tmpDir.String(), nil)
+	require.NoError(t, err)
+
+	runtime.ReadMemStats(&m2)
+	heapUsed := m2.HeapInuse - m.HeapInuse
+	fmt.Println("Heap memory used during the test:", heapUsed)
+	// the .zip file require random access, so the full io.Reader content must be cached, since
+	// the test file is 130MB, that's the reason for the 180+ Mb of memory consumed.
+	require.True(t, heapUsed < 200000000, "heap consumption should be less than 200M but is %d", heapUsed)
+}
+
 func download(t require.TestingT, url string, file *paths.Path) error {
 	if file.Exist() {
 		return nil
