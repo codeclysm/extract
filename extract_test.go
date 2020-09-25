@@ -378,6 +378,9 @@ func TestTarGzMemoryConsumption(t *testing.T) {
 
 	runtime.ReadMemStats(&m2)
 	heapUsed := m2.HeapInuse - m.HeapInuse
+	if m2.HeapInuse < m.HeapInuse {
+		heapUsed = 0
+	}
 	fmt.Println("Heap memory used during the test:", heapUsed)
 	require.True(t, heapUsed < 5000000, "heap consumption should be less than 5M but is %d", heapUsed)
 }
@@ -403,10 +406,13 @@ func TestZipMemoryConsumption(t *testing.T) {
 
 	runtime.ReadMemStats(&m2)
 	heapUsed := m2.HeapInuse - m.HeapInuse
+	if m2.HeapInuse < m.HeapInuse {
+		heapUsed = 0
+	}
 	fmt.Println("Heap memory used during the test:", heapUsed)
 	// the .zip file require random access, so the full io.Reader content must be cached, since
-	// the test file is 130MB, that's the reason for the 180+ Mb of memory consumed.
-	require.True(t, heapUsed < 200000000, "heap consumption should be less than 200M but is %d", heapUsed)
+	// the test file is 130MB, that's the reason for the high memory consumed.
+	require.True(t, heapUsed < 250000000, "heap consumption should be less than 250M but is %d", heapUsed)
 }
 
 func download(t require.TestingT, url string, file *paths.Path) error {
