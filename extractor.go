@@ -11,11 +11,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	filetype "github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
 	"github.com/juju/errors"
+	"golang.org/x/sync/errgroup"
 )
 
 // Extractor is more sophisticated than the base functions. It allows to write over an interface
@@ -186,87 +188,112 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 
 // Zip extracts a .zip archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example).
-func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, rename Renamer) error {
+func (e *Extractor) Zip(originalCtx context.Context, body io.Reader, location string, rename Renamer) error {
 	// read the whole body into a buffer. Not sure this is the best way to do it
 	buffer := bytes.NewBuffer([]byte{})
-	copyCancel(ctx, buffer, body)
+	copyCancel(originalCtx, buffer, body)
 
 	archive, err := zip.NewReader(bytes.NewReader(buffer.Bytes()), int64(buffer.Len()))
 	if err != nil {
 		return errors.Annotatef(err, "Read the zip file")
 	}
 
+	fileChan := make(chan *zip.File)
+	go func() {
+		defer close(fileChan)
+		for _, header := range archive.File {
+			fileChan <- header
+		}
+	}()
+
 	links := []link{}
+	g, ctx := errgroup.WithContext(originalCtx)
 
-	// We make the first pass creating the directory structure, or we could end up
-	// attempting to create a file where there's no folder
-	for _, header := range archive.File {
-		select {
-		case <-ctx.Done():
-			return errors.New("interrupted")
-		default:
-		}
-
-		path := header.Name
-
-		// Replace backslash with forward slash. There are archives in the wild made with
-		// buggy compressors that use backslash as path separator. The ZIP format explicitly
-		// denies the use of "\" so we just replace it with slash "/".
-		// Moreover it seems that folders are stored as "files" but with a final "\" in the
-		// filename... oh, well...
-		forceDir := strings.HasSuffix(path, "\\")
-		path = strings.Replace(path, "\\", "/", -1)
-
-		if rename != nil {
-			path = rename(path)
-		}
-
-		if path == "" {
-			continue
-		}
-
-		if path, err = safeJoin(location, path); err != nil {
-			continue
-		}
-
-		info := header.FileInfo()
-
-		switch {
-		case info.IsDir() || forceDir:
-			if err := e.FS.MkdirAll(path, info.Mode()|os.ModeDir|100); err != nil {
-				return errors.Annotatef(err, "Create directory %s", path)
+	filesWorker := func() error {
+		for header := range fileChan {
+			select {
+			case <-ctx.Done():
+				return errors.New("interrupted")
+			default:
 			}
-		// We only check for symlinks because hard links aren't possible
-		case info.Mode()&os.ModeSymlink != 0:
-			if f, err := header.Open(); err != nil {
-				return errors.Annotatef(err, "Open link %s", path)
-			} else if name, err := ioutil.ReadAll(f); err != nil {
-				return errors.Annotatef(err, "Read address of link %s", path)
-			} else {
-				links = append(links, link{Path: path, Name: string(name)})
-				f.Close()
+			path := header.Name
+
+			// Replace backslash with forward slash. There are archives in the wild made with
+			// buggy compressors that use backslash as path separator. The ZIP format explicitly
+			// denies the use of "\" so we just replace it with slash "/".
+			// Moreover it seems that folders are stored as "files" but with a final "\" in the
+			// filename... oh, well...
+			forceDir := strings.HasSuffix(path, "\\")
+			path = strings.Replace(path, "\\", "/", -1)
+
+			if rename != nil {
+				path = rename(path)
 			}
-		default:
-			if f, err := header.Open(); err != nil {
-				return errors.Annotatef(err, "Open file %s", path)
-			} else if err := e.copy(ctx, path, info.Mode(), f); err != nil {
-				return errors.Annotatef(err, "Create file %s", path)
-			} else {
-				f.Close()
+
+			if path == "" {
+				continue
+			}
+
+			var err error
+			if path, err = safeJoin(location, path); err != nil {
+				continue
+			}
+
+			info := header.FileInfo()
+
+			switch {
+			case info.IsDir() || forceDir:
+				if err := e.FS.MkdirAll(path, info.Mode()|os.ModeDir|100); err != nil {
+					return errors.Annotatef(err, "Create directory %s", path)
+				}
+			// We only check for symlinks because hard links aren't possible
+			case info.Mode()&os.ModeSymlink != 0:
+				if f, err := header.Open(); err != nil {
+					return errors.Annotatef(err, "Open link %s", path)
+				} else if name, err := ioutil.ReadAll(f); err != nil {
+					return errors.Annotatef(err, "Read address of link %s", path)
+				} else {
+					links = append(links, link{Path: path, Name: string(name)})
+					f.Close()
+				}
+			default:
+				if f, err := header.Open(); err != nil {
+					return errors.Annotatef(err, "Open file %s", path)
+				} else if err := e.copy(ctx, path, info.Mode(), f); err != nil {
+					return errors.Annotatef(err, "Create file %s", path)
+				} else {
+					f.Close()
+				}
 			}
 		}
+		return nil
 	}
 
-	// Now we make another pass creating the links
-	for i := range links {
-		select {
-		case <-ctx.Done():
-			return errors.New("interrupted")
-		default:
-		}
-		if err := e.FS.Symlink(links[i].Name, links[i].Path); err != nil {
-			return errors.Annotatef(err, "Create link %s", links[i].Path)
-		}
+	for i := 0; i < runtime.NumCPU(); i++ {
+		g.Go(filesWorker)
+	}
+	if err := g.Wait(); err != nil {
+		return err
+	}
+
+	// Processes links, this is done in a second moment since it might happen that
+	// the file to link still has not been exctracted, that would make the linking fail
+	g, ctx = errgroup.WithContext(originalCtx)
+	for _, link := range links {
+		g.Go(func() error {
+			select {
+			case <-ctx.Done():
+				return errors.New("interrupted")
+			default:
+			}
+			if err := e.FS.Symlink(link.Name, link.Path); err != nil {
+				return errors.Annotatef(err, "Create link %s", link.Path)
+			}
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return err
 	}
 
 	return nil
