@@ -10,5 +10,6 @@ require (
 	github.com/juju/testing v0.0.0-20200510222523-6c8c298c77a0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/stretchr/testify v1.3.0
+	golang.org/x/sync v0.0.0-20201020160332-67f06af15bc9
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 )
