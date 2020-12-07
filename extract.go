@@ -69,6 +69,16 @@ func Gz(ctx context.Context, body io.Reader, location string, rename Renamer) er
 	return extractor.Gz(ctx, body, location, rename)
 }
 
+// Xz extracts a .xz or .tar.xz archived stream of data in the specified location.
+// It accepts a rename function to handle the names of the files (see the example)
+func Xz(ctx context.Context, body io.Reader, location string, rename Renamer) error {
+	extractor := Extractor{
+		FS: fs{},
+	}
+
+	return extractor.Xz(ctx, body, location, rename)
+}
+
 type link struct {
 	Name string
 	Path string
