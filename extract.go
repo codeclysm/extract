@@ -5,7 +5,7 @@
 // a destination:
 //
 // 	file, _ := os.Open("path/to/file.tar.bz2")
-// 	extract.TarBz2(context.TODO, file, "/path/where/to/extract", nil)
+// 	extract.Bz2(context.TODO, file, "/path/where/to/extract", nil)
 // ```
 //
 // Sometimes you'll want a bit more control over the files, such as extracting a
@@ -17,7 +17,7 @@
 //		parts = parts[1:]
 //		return strings.Join(parts, string(filepath.Separator))
 //	}
-//	extract.TarBz2(context.TODO, file, "/path/where/to/extract", shift)
+//	extract.Bz2(context.TODO, file, "/path/where/to/extract", shift)
 // ```
 //
 // If you don't know which archive you're dealing with (life really is always a surprise) you can use Archive, which will infer the type of archive from the first bytes
