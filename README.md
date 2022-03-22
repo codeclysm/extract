@@ -9,13 +9,13 @@
 Package extract allows to extract archives in zip, tar.gz or tar.bz2 formats
 easily.
 
-Most of the time you'll just need to call the proper function with a buffer and
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+Most of the time you'll just need to call the proper function with a Reader and
 a destination:
 
 ```go
-data, _ := ioutil.ReadFile("path/to/file.tar.bz2")
-buffer := bytes.NewBuffer(data)
-extract.Bz2(data, "/path/where/to/extract", nil)
+file, _ := os.Open("path/to/file.tar.bz2")
+extract.Bz2(context.TODO, file, "/path/where/to/extract", nil)
 ```
 
 Sometimes you'll want a bit more control over the files, such as extracting a
