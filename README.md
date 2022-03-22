@@ -9,7 +9,6 @@
 Package extract allows to extract archives in zip, tar.gz or tar.bz2 formats
 easily.
 
-12345678901234567890123456789012345678901234567890123456789012345678901234567890
 Most of the time you'll just need to call the proper function with a Reader and
 a destination:
 
