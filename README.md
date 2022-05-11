@@ -15,7 +15,7 @@ a destination:
 ```go
 data, _ := ioutil.ReadFile("path/to/file.tar.bz2")
 buffer := bytes.NewBuffer(data)
-extract.Bz2(data, "/path/where/to/extract", nil)
+extract.Bz2(context.Background(), buffer, "/path/where/to/extract", nil)
 ```
 
 Sometimes you'll want a bit more control over the files, such as extracting a
