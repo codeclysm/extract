@@ -321,9 +321,7 @@ func testWalk(t *testing.T, dir string, testFiles Files) {
 			files[path] = "link"
 		} else {
 			data, err := ioutil.ReadFile(filepath.Join(dir, path))
-			if err != nil {
-
-			}
+			require.NoError(t, err)
 			files[path] = strings.TrimSpace(string(data))
 		}
 
