@@ -49,6 +49,26 @@ func Archive(ctx context.Context, body io.Reader, location string, rename Rename
 	return extractor.Archive(ctx, body, location, rename)
 }
 
+// Zstd extracts a .zst or .tar.zst archived stream of data in the specified location.
+// It accepts a rename function to handle the names of the files (see the example)
+func Zstd(ctx context.Context, body io.Reader, location string, rename Renamer) error {
+	extractor := Extractor{
+		FS: fs{},
+	}
+
+	return extractor.Zstd(ctx, body, location, rename)
+}
+
+// Xz extracts a .xz or .tar.xz archived stream of data in the specified location.
+// It accepts a rename function to handle the names of the files (see the example)
+func Xz(ctx context.Context, body io.Reader, location string, rename Renamer) error {
+	extractor := Extractor{
+		FS: fs{},
+	}
+
+	return extractor.Xz(ctx, body, location, rename)
+}
+
 // Bz2 extracts a .bz2 or .tar.bz2 archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Bz2(ctx context.Context, body io.Reader, location string, rename Renamer) error {
