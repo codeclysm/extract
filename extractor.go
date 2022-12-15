@@ -16,6 +16,7 @@ import (
 	filetype "github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
 	"github.com/juju/errors"
+	"github.com/ulikunitz/xz"
 )
 
 // Extractor is more sophisticated than the base functions. It allows to write over an interface
@@ -46,11 +47,35 @@ func (e *Extractor) Archive(ctx context.Context, body io.Reader, location string
 		return e.Gz(ctx, body, location, rename)
 	case "bz2":
 		return e.Bz2(ctx, body, location, rename)
+	case "xz":
+		return e.Xz(ctx, body, location, rename)
 	case "tar":
 		return e.Tar(ctx, body, location, rename)
 	default:
 		return errors.New("Not a supported archive")
 	}
+}
+
+func (e *Extractor) Xz(ctx context.Context, body io.Reader, location string, rename Renamer) error {
+	reader, err := xz.NewReader(body)
+	if err != nil {
+		return errors.Annotatef(err, "opening xz: detect")
+	}
+
+	body, kind, err := match(reader)
+	if err != nil {
+		return errors.Annotatef(err, "extract bz2: detect")
+	}
+
+	if kind.Extension == "tar" {
+		return e.Tar(ctx, body, location, rename)
+	}
+
+	err = e.copy(ctx, location, 0666, body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Bz2 extracts a .bz2 or .tar.bz2 archived stream of data in the specified location.

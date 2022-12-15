@@ -47,6 +47,39 @@ func TestExtractor_Tar(t *testing.T) {
 	testWalk(t, tmp, files)
 }
 
+func TestExtractor_Xz(t *testing.T) {
+	tmp, _ := ioutil.TempDir("", "")
+
+	extractor := extract.Extractor{
+		FS: MockDisk{
+			Base: tmp,
+		},
+	}
+
+	data, err := ioutil.ReadFile("testdata/archive.tar.xz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	buffer := bytes.NewBuffer(data)
+
+	err = extractor.Xz(context.Background(), buffer, "/", nil)
+	if err != nil {
+		t.Error(err.Error())
+	}
+
+	files := Files{
+		"":                          "dir",
+		"/archive":                  "dir",
+		"/archive/folder":           "dir",
+		"/archive/folderlink":       "link",
+		"/archive/folder/file1.txt": "folder/File1",
+		"/archive/file1.txt":        "File1",
+		"/archive/file2.txt":        "File2",
+		"/archive/link.txt":         "File1",
+	}
+	testWalk(t, tmp, files)
+}
+
 func TestExtractor_Zip(t *testing.T) {
 	tmp, _ := ioutil.TempDir("", "")
 
