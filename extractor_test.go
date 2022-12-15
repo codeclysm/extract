@@ -21,6 +21,7 @@ func TestExtractors(t *testing.T) {
 	}
 	testCases := []archiveTest{
 		{"TarGz", paths.New("testdata/archive.tar.gz")},
+		{"TarBz2", paths.New("testdata/archive.tar.bz2")},
 		{"TarXz", paths.New("testdata/archive.tar.xz")},
 		{"Zip", paths.New("testdata/archive.zip")},
 	}

@@ -89,7 +89,7 @@ func (e *Extractor) Bz2(ctx context.Context, body io.Reader, location string, re
 	}
 
 	if kind.Extension == "tar" {
-		return Tar(ctx, body, location, rename)
+		return e.Tar(ctx, body, location, rename)
 	}
 
 	err = e.copy(ctx, location, 0666, body)
