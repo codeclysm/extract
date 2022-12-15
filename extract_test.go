@@ -181,9 +181,8 @@ var ExtractCases = []struct {
 
 func TestArchiveFailure(t *testing.T) {
 	err := extract.Archive(context.Background(), strings.NewReader("not an archive"), "", nil)
-	if err == nil || err.Error() != "Not a supported archive" {
-		t.Error("Expected error 'Not a supported archive', got", err)
-	}
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Not a supported archive")
 }
 
 func TestExtract(t *testing.T) {

@@ -55,7 +55,7 @@ func (e *Extractor) Archive(ctx context.Context, body io.Reader, location string
 	case "tar":
 		return e.Tar(ctx, body, location, rename)
 	default:
-		return errors.New("Not a supported archive")
+		return errors.New("Not a supported archive: " + kind.Extension)
 	}
 }
 
