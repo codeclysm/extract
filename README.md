@@ -17,6 +17,14 @@ file, _ := os.Open("path/to/file.tar.bz2")
 extract.Bz2(context.TODO, file, "/path/where/to/extract", nil)
 ```
 
+or also:
+
+```go
+data, _ := ioutil.ReadFile("path/to/file.tar.bz2")
+buffer := bytes.NewBuffer(data)
+extract.Bz2(context.TODO, buffer, "/path/where/to/extract", nil)
+```
+
 Sometimes you'll want a bit more control over the files, such as extracting a
 subfolder of the archive. In this cases you can specify a renamer func that will
 change the path for every file:
