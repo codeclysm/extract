@@ -4,68 +4,50 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
+	"github.com/arduino/go-paths-helper"
 	"github.com/codeclysm/extract/v3"
 	"github.com/stretchr/testify/require"
 )
 
-func TestExtractor_Tar(t *testing.T) {
-	tmp, _ := ioutil.TempDir("", "")
-
-	extractor := extract.Extractor{
-		FS: MockDisk{
-			Base: tmp,
-		},
+func TestExtractors(t *testing.T) {
+	type archiveTest struct {
+		name string
+		file *paths.Path
 	}
-
-	data, err := ioutil.ReadFile("testdata/archive.tar.gz")
-	if err != nil {
-		t.Fatal(err)
+	testCases := []archiveTest{
+		{"TarGz", paths.New("testdata/archive.tar.gz")},
+		{"TarXz", paths.New("testdata/archive.tar.xz")},
+		{"Zip", paths.New("testdata/archive.zip")},
 	}
-	buffer := bytes.NewBuffer(data)
-
-	err = extractor.Gz(context.Background(), buffer, "/", nil)
-	if err != nil {
-		t.Error(err.Error())
+	for _, test := range testCases {
+		t.Run(test.name, func(t *testing.T) {
+			testArchive(t, test.file)
+		})
 	}
-
-	files := Files{
-		"":                          "dir",
-		"/archive":                  "dir",
-		"/archive/folder":           "dir",
-		"/archive/folderlink":       "link",
-		"/archive/folder/file1.txt": "folder/File1",
-		"/archive/file1.txt":        "File1",
-		"/archive/file2.txt":        "File2",
-		"/archive/link.txt":         "File1",
-	}
-	testWalk(t, tmp, files)
 }
 
-func TestExtractor_Xz(t *testing.T) {
-	tmp, _ := ioutil.TempDir("", "")
+func testArchive(t *testing.T, archivePath *paths.Path) {
+	tmp, err := paths.MkTempDir("", "")
+	require.NoError(t, err)
+	defer tmp.RemoveAll()
+
+	data, err := archivePath.ReadFile()
+	require.NoError(t, err)
+
+	buffer := bytes.NewBuffer(data)
 
 	extractor := extract.Extractor{
 		FS: MockDisk{
-			Base: tmp,
+			Base: tmp.String(),
 		},
 	}
-
-	data, err := ioutil.ReadFile("testdata/archive.tar.xz")
-	if err != nil {
-		t.Fatal(err)
-	}
-	buffer := bytes.NewBuffer(data)
-
-	err = extractor.Xz(context.Background(), buffer, "/", nil)
-	if err != nil {
-		t.Error(err.Error())
-	}
+	err = extractor.Archive(context.Background(), buffer, "/", nil)
+	require.NoError(t, err)
 
 	files := Files{
 		"":                          "dir",
@@ -77,40 +59,7 @@ func TestExtractor_Xz(t *testing.T) {
 		"/archive/file2.txt":        "File2",
 		"/archive/link.txt":         "File1",
 	}
-	testWalk(t, tmp, files)
-}
-
-func TestExtractor_Zip(t *testing.T) {
-	tmp, _ := ioutil.TempDir("", "")
-
-	extractor := extract.Extractor{
-		FS: MockDisk{
-			Base: tmp,
-		},
-	}
-
-	data, err := ioutil.ReadFile("testdata/archive.zip")
-	if err != nil {
-		t.Fatal(err)
-	}
-	buffer := bytes.NewBuffer(data)
-
-	err = extractor.Zip(context.Background(), buffer, "/", nil)
-	if err != nil {
-		t.Error(err.Error())
-	}
-
-	files := Files{
-		"":                          "dir",
-		"/archive":                  "dir",
-		"/archive/folder":           "dir",
-		"/archive/folderlink":       "link",
-		"/archive/folder/file1.txt": "folder/File1",
-		"/archive/file1.txt":        "File1",
-		"/archive/file2.txt":        "File2",
-		"/archive/link.txt":         "File1",
-	}
-	testWalk(t, tmp, files)
+	testWalk(t, tmp.String(), files)
 }
 
 func TestZipSlipHardening(t *testing.T) {
