@@ -16,6 +16,7 @@ import (
 	filetype "github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
 	"github.com/juju/errors"
+	"github.com/klauspost/compress/zstd"
 	"github.com/ulikunitz/xz"
 )
 
@@ -49,11 +50,35 @@ func (e *Extractor) Archive(ctx context.Context, body io.Reader, location string
 		return e.Bz2(ctx, body, location, rename)
 	case "xz":
 		return e.Xz(ctx, body, location, rename)
+	case "zst":
+		return e.Zstd(ctx, body, location, rename)
 	case "tar":
 		return e.Tar(ctx, body, location, rename)
 	default:
 		return errors.New("Not a supported archive")
 	}
+}
+
+func (e *Extractor) Zstd(ctx context.Context, body io.Reader, location string, rename Renamer) error {
+	reader, err := zstd.NewReader(body)
+	if err != nil {
+		return errors.Annotatef(err, "opening zstd: detect")
+	}
+
+	body, kind, err := match(reader)
+	if err != nil {
+		return errors.Annotatef(err, "extract zstd: detect")
+	}
+
+	if kind.Extension == "tar" {
+		return e.Tar(ctx, body, location, rename)
+	}
+
+	err = e.copy(ctx, location, 0666, body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (e *Extractor) Xz(ctx context.Context, body io.Reader, location string, rename Renamer) error {
@@ -64,7 +89,7 @@ func (e *Extractor) Xz(ctx context.Context, body io.Reader, location string, ren
 
 	body, kind, err := match(reader)
 	if err != nil {
-		return errors.Annotatef(err, "extract bz2: detect")
+		return errors.Annotatef(err, "extract xz: detect")
 	}
 
 	if kind.Extension == "tar" {
