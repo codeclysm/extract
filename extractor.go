@@ -363,7 +363,15 @@ func match(r io.Reader) (io.Reader, types.Type, error) {
 		return nil, types.Unknown, err
 	}
 
-	r = io.MultiReader(bytes.NewBuffer(buffer[:n]), r)
+	if seeker, ok := r.(io.Seeker); ok {
+		// if the stream is seekable, we just rewind it
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			return nil, types.Unknown, err
+		}
+	} else {
+		// otherwise we create a new reader that will prepend the buffer
+		r = io.MultiReader(bytes.NewBuffer(buffer[:n]), r)
+	}
 
 	typ, err := filetype.Match(buffer)
 
