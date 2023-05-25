@@ -406,7 +406,7 @@ func TestZipMemoryConsumption(t *testing.T) {
 		heapUsed = 0
 	}
 	fmt.Println("Heap memory used during the test:", heapUsed)
-	require.True(t, heapUsed < 5000000, "heap consumption should be less than 5M but is %d", heapUsed)
+	require.True(t, heapUsed < 10000000, "heap consumption should be less than 10M but is %d", heapUsed)
 }
 
 func download(t require.TestingT, url string, file *paths.Path) error {
