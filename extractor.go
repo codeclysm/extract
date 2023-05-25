@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -307,7 +306,7 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 		case info.Mode()&os.ModeSymlink != 0:
 			if f, err := header.Open(); err != nil {
 				return errors.Annotatef(err, "Open link %s", path)
-			} else if name, err := ioutil.ReadAll(f); err != nil {
+			} else if name, err := io.ReadAll(f); err != nil {
 				return errors.Annotatef(err, "Read address of link %s", path)
 			} else {
 				links = append(links, link{Path: path, Name: string(name)})
