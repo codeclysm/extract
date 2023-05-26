@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -187,9 +186,9 @@ func TestArchiveFailure(t *testing.T) {
 
 func TestExtract(t *testing.T) {
 	for _, test := range ExtractCases {
-		dir, _ := ioutil.TempDir("", "")
+		dir, _ := os.MkdirTemp("", "")
 		dir = filepath.Join(dir, "test")
-		data, err := ioutil.ReadFile(test.Archive)
+		data, err := os.ReadFile(test.Archive)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -222,8 +221,8 @@ func TestExtract(t *testing.T) {
 }
 
 func BenchmarkArchive(b *testing.B) {
-	dir, _ := ioutil.TempDir("", "")
-	data, _ := ioutil.ReadFile("testdata/archive.tar.bz2")
+	dir, _ := os.MkdirTemp("", "")
+	data, _ := os.ReadFile("testdata/archive.tar.bz2")
 
 	b.StartTimer()
 
@@ -244,8 +243,8 @@ func BenchmarkArchive(b *testing.B) {
 }
 
 func BenchmarkTarBz2(b *testing.B) {
-	dir, _ := ioutil.TempDir("", "")
-	data, _ := ioutil.ReadFile("testdata/archive.tar.bz2")
+	dir, _ := os.MkdirTemp("", "")
+	data, _ := os.ReadFile("testdata/archive.tar.bz2")
 
 	b.StartTimer()
 
@@ -266,8 +265,8 @@ func BenchmarkTarBz2(b *testing.B) {
 }
 
 func BenchmarkTarGz(b *testing.B) {
-	dir, _ := ioutil.TempDir("", "")
-	data, _ := ioutil.ReadFile("testdata/archive.tar.gz")
+	dir, _ := os.MkdirTemp("", "")
+	data, _ := os.ReadFile("testdata/archive.tar.gz")
 
 	b.StartTimer()
 
@@ -288,8 +287,8 @@ func BenchmarkTarGz(b *testing.B) {
 }
 
 func BenchmarkZip(b *testing.B) {
-	dir, _ := ioutil.TempDir("", "")
-	data, _ := ioutil.ReadFile("testdata/archive.zip")
+	dir, _ := os.MkdirTemp("", "")
+	data, _ := os.ReadFile("testdata/archive.zip")
 
 	b.StartTimer()
 
@@ -319,7 +318,7 @@ func testWalk(t *testing.T, dir string, testFiles Files) {
 		} else if info.Mode()&os.ModeSymlink != 0 {
 			files[path] = "link"
 		} else {
-			data, err := ioutil.ReadFile(filepath.Join(dir, path))
+			data, err := os.ReadFile(filepath.Join(dir, path))
 			require.NoError(t, err)
 			files[path] = strings.TrimSpace(string(data))
 		}
@@ -370,7 +369,7 @@ func TestTarGzMemoryConsumption(t *testing.T) {
 	runtime.GC()
 	runtime.ReadMemStats(&m)
 
-	err = extract.Gz(context.Background(), f, tmpDir.String(), nil)
+	err = extract.Archive(context.Background(), f, tmpDir.String(), nil)
 	require.NoError(t, err)
 
 	runtime.ReadMemStats(&m2)
@@ -398,7 +397,7 @@ func TestZipMemoryConsumption(t *testing.T) {
 	runtime.GC()
 	runtime.ReadMemStats(&m)
 
-	err = extract.Zip(context.Background(), f, tmpDir.String(), nil)
+	err = extract.Archive(context.Background(), f, tmpDir.String(), nil)
 	require.NoError(t, err)
 
 	runtime.ReadMemStats(&m2)
@@ -407,9 +406,7 @@ func TestZipMemoryConsumption(t *testing.T) {
 		heapUsed = 0
 	}
 	fmt.Println("Heap memory used during the test:", heapUsed)
-	// the .zip file require random access, so the full io.Reader content must be cached, since
-	// the test file is 130MB, that's the reason for the high memory consumed.
-	require.True(t, heapUsed < 250000000, "heap consumption should be less than 250M but is %d", heapUsed)
+	require.True(t, heapUsed < 10000000, "heap consumption should be less than 10M but is %d", heapUsed)
 }
 
 func download(t require.TestingT, url string, file *paths.Path) error {

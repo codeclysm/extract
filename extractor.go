@@ -7,8 +7,8 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"context"
+	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -237,11 +237,27 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 // Zip extracts a .zip archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example).
 func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	// read the whole body into a buffer. Not sure this is the best way to do it
-	buffer := bytes.NewBuffer([]byte{})
-	copyCancel(ctx, buffer, body)
-
-	archive, err := zip.NewReader(bytes.NewReader(buffer.Bytes()), int64(buffer.Len()))
+	var bodySize int64
+	bodyReaderAt, isReaderAt := (body).(io.ReaderAt)
+	if bodySeeker, isSeeker := (body).(io.Seeker); isReaderAt && isSeeker {
+		// get the size by seeking to the end
+		endPos, err := bodySeeker.Seek(0, io.SeekEnd)
+		if err != nil {
+			return fmt.Errorf("failed to seek to the end of the body: %s", err)
+		}
+		// reset the reader to the beginning
+		if _, err := bodySeeker.Seek(0, io.SeekStart); err != nil {
+			return fmt.Errorf("failed to seek to the beginning of the body: %w", err)
+		}
+		bodySize = endPos
+	} else {
+		// read the whole body into a buffer. Not sure this is the best way to do it
+		buffer := bytes.NewBuffer([]byte{})
+		copyCancel(ctx, buffer, body)
+		bodyReaderAt = bytes.NewReader(buffer.Bytes())
+		bodySize = int64(buffer.Len())
+	}
+	archive, err := zip.NewReader(bodyReaderAt, bodySize)
 	if err != nil {
 		return errors.Annotatef(err, "Read the zip file")
 	}
@@ -290,7 +306,7 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 		case info.Mode()&os.ModeSymlink != 0:
 			if f, err := header.Open(); err != nil {
 				return errors.Annotatef(err, "Open link %s", path)
-			} else if name, err := ioutil.ReadAll(f); err != nil {
+			} else if name, err := io.ReadAll(f); err != nil {
 				return errors.Annotatef(err, "Read address of link %s", path)
 			} else {
 				links = append(links, link{Path: path, Name: string(name)})
@@ -347,7 +363,15 @@ func match(r io.Reader) (io.Reader, types.Type, error) {
 		return nil, types.Unknown, err
 	}
 
-	r = io.MultiReader(bytes.NewBuffer(buffer[:n]), r)
+	if seeker, ok := r.(io.Seeker); ok {
+		// if the stream is seekable, we just rewind it
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+			return nil, types.Unknown, err
+		}
+	} else {
+		// otherwise we create a new reader that will prepend the buffer
+		r = io.MultiReader(bytes.NewBuffer(buffer[:n]), r)
+	}
 
 	typ, err := filetype.Match(buffer)
 
