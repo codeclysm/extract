@@ -360,3 +360,13 @@ func (m MockDisk) OpenFile(name string, flag int, perm os.FileMode) (*os.File, e
 func (m MockDisk) Remove(path string) error {
 	return os.Remove(filepath.Join(m.Base, path))
 }
+
+func (m MockDisk) Stat(name string) (os.FileInfo, error) {
+	name = filepath.Join(m.Base, name)
+	return os.Stat(name)
+}
+
+func (m MockDisk) Chmod(name string, mode os.FileMode) error {
+	name = filepath.Join(m.Base, name)
+	return os.Chmod(name, mode)
+}

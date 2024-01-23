@@ -110,3 +110,11 @@ func (f fs) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) 
 func (f fs) Remove(path string) error {
 	return os.Remove(path)
 }
+
+func (f fs) Stat(name string) (os.FileInfo, error) {
+	return os.Stat(name)
+}
+
+func (f fs) Chmod(name string, mode os.FileMode) error {
+	return os.Chmod(name, mode)
+}
