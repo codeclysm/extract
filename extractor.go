@@ -28,6 +28,8 @@ type Extractor struct {
 		MkdirAll(string, os.FileMode) error
 		OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
 		Symlink(string, string) error
+		Stat(name string) (os.FileInfo, error)
+		Chmod(name string, mode os.FileMode) error
 	}
 }
 
@@ -299,7 +301,13 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 
 		switch {
 		case info.IsDir() || forceDir:
-			if err := e.FS.MkdirAll(path, info.Mode()|os.ModeDir|100); err != nil {
+			dirMode := info.Mode()|os.ModeDir|0100
+			if _, err := e.FS.Stat(path); err == nil {
+				// directory already created, update permissions
+				if err := e.FS.Chmod(path, dirMode); err != nil {
+					return errors.Annotatef(err, "Set permissions %s", path)
+				}
+			} else if err := e.FS.MkdirAll(path, dirMode); err != nil {
 				return errors.Annotatef(err, "Create directory %s", path)
 			}
 		// We only check for symlinks because hard links aren't possible
@@ -340,7 +348,7 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 
 func (e *Extractor) copy(ctx context.Context, path string, mode os.FileMode, src io.Reader) error {
 	// We add the execution permission to be able to create files inside it
-	err := e.FS.MkdirAll(filepath.Dir(path), mode|os.ModeDir|100)
+	err := e.FS.MkdirAll(filepath.Dir(path), mode|os.ModeDir|0100)
 	if err != nil {
 		return err
 	}

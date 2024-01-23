@@ -130,3 +130,11 @@ func (f fs) Symlink(oldname, newname string) error {
 func (f fs) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
 	return os.OpenFile(name, flag, perm)
 }
+
+func (f fs) Stat(name string) (os.FileInfo, error) {
+	return os.Stat(name)
+}
+
+func (f fs) Chmod(name string, mode os.FileMode) error {
+	return os.Chmod(name, mode)
+}

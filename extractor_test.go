@@ -196,3 +196,13 @@ func (m MockDisk) OpenFile(name string, flag int, perm os.FileMode) (*os.File, e
 	name = filepath.Join(m.Base, name)
 	return os.OpenFile(name, flag, perm)
 }
+
+func (m MockDisk) Stat(name string) (os.FileInfo, error) {
+	name = filepath.Join(m.Base, name)
+	return os.Stat(name)
+}
+
+func (m MockDisk) Chmod(name string, mode os.FileMode) error {
+	name = filepath.Join(m.Base, name)
+	return os.Chmod(name, mode)
+}
