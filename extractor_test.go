@@ -9,11 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/arduino/go-paths-helper"
 	"github.com/codeclysm/extract/v4"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sys/unix"
 )
 
 func TestExtractors(t *testing.T) {
@@ -256,6 +259,74 @@ func TestSymLinkMazeHardening(t *testing.T) {
 		st, err := targetDir.Join("aaa").Lstat()
 		require.NoError(t, err)
 		require.Equal(t, "aaa", st.Name())
+	})
+}
+
+func TestUnixPermissions(t *testing.T) {
+	// Disable user's umask to enable creation of files with any permission, restore it after the test
+	userUmask := unix.Umask(0)
+	defer unix.Umask(userUmask)
+
+	archiveFilenames := []string{
+		"testdata/permissions.zip",
+		"testdata/permissions.tar",
+	}
+	for _, archiveFilename := range archiveFilenames {
+		tmp, err := paths.MkTempDir("", "")
+		require.NoError(t, err)
+		defer tmp.RemoveAll()
+
+		f, err := paths.New(archiveFilename).Open()
+		require.NoError(t, err)
+		err = extract.Archive(context.Background(), f, tmp.String(), nil)
+		require.NoError(t, err)
+
+		filepath.Walk(tmp.String(), func(path string, info os.FileInfo, _ error) error {
+			filename := filepath.Base(path)
+			// Desired permissions indicated by part of the filenames inside the zip/tar files
+			if strings.HasPrefix(filename, "dir") {
+				desiredPermString, _ := strings.CutPrefix(filename, "dir")
+				desiredPerms, _ := strconv.ParseUint(desiredPermString, 8, 32)
+				require.Equal(t, os.ModeDir|os.FileMode(desiredPerms), info.Mode())
+			} else if strings.HasPrefix(filename, "file") {
+				desiredPermString, _ := strings.CutPrefix(filename, "file")
+				desiredPerms, _ := strconv.ParseUint(desiredPermString, 8, 32)
+				require.Equal(t, os.FileMode(desiredPerms), info.Mode())
+			}
+			return nil
+		})
+	}
+}
+
+func TestZipDirectoryPermissions(t *testing.T) {
+	// Disable user's umask to enable creation of files with any permission, restore it after the test
+	userUmask := unix.Umask(0)
+	defer unix.Umask(userUmask)
+
+	// This arduino library has files before their containing directories in the zip,
+	// so a good test case that these directory permissions are created correctly
+	archive := paths.New("testdata/filesbeforedirectories.zip")
+	download(t, "https://downloads.arduino.cc/libraries/github.com/arduino-libraries/LiquidCrystal-1.0.7.zip", archive)
+
+	tmp, err := paths.MkTempDir("", "")
+	require.NoError(t, err)
+	defer tmp.RemoveAll()
+
+	f, err := archive.Open()
+	require.NoError(t, err)
+	err = extract.Archive(context.Background(), f, tmp.String(), nil)
+	require.NoError(t, err)
+
+	filepath.Walk(tmp.String(), func(path string, info os.FileInfo, _ error) error {
+		// Test files and directories (excluding the parent) match permissions from the zip file
+		if path != tmp.String() {
+			if info.IsDir() {
+				require.Equal(t, os.ModeDir|os.FileMode(0755), info.Mode())
+			} else {
+				require.Equal(t, os.FileMode(0644), info.Mode())
+			}
+		}
+		return nil
 	})
 }
 

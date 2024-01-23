@@ -11,6 +11,7 @@ require (
 	github.com/klauspost/compress v1.15.13
 	github.com/stretchr/testify v1.9.0
 	github.com/ulikunitz/xz v0.5.12
+	golang.org/x/sys v0.16.0
 )
 
 require (
