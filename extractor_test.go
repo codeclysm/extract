@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/sys/unix"
 	"github.com/arduino/go-paths-helper"
 	"github.com/codeclysm/extract/v3"
 	"github.com/stretchr/testify/require"
@@ -103,8 +102,8 @@ func TestZipSlipHardening(t *testing.T) {
 
 func TestUnixPermissions(t *testing.T) {
 	// Disable user's umask to enable creation of files with any permission, restore it after the test
-	userUmask := unix.Umask(0)
-	defer unix.Umask(userUmask)
+	userUmask := UnixUmaskZero()
+	defer UnixUmask(userUmask)
 
 	archiveFilenames := []string{
 		"testdata/permissions.zip",
@@ -126,11 +125,11 @@ func TestUnixPermissions(t *testing.T) {
 			if strings.HasPrefix(filename, "dir") {
 				desiredPermString, _ := strings.CutPrefix(filename, "dir")
 				desiredPerms, _ := strconv.ParseUint(desiredPermString, 8, 32)
-				require.Equal(t, os.ModeDir|os.FileMode(desiredPerms), info.Mode())
+				require.Equal(t, os.ModeDir|os.FileMode(OsDirPerms(desiredPerms)), info.Mode())
 			} else if strings.HasPrefix(filename, "file") {
 				desiredPermString, _ := strings.CutPrefix(filename, "file")
 				desiredPerms, _ := strconv.ParseUint(desiredPermString, 8, 32)
-				require.Equal(t, os.FileMode(desiredPerms), info.Mode())
+				require.Equal(t, os.FileMode(OsFilePerms(desiredPerms)), info.Mode())
 			}
 			return nil
 		})
@@ -139,8 +138,8 @@ func TestUnixPermissions(t *testing.T) {
 
 func TestZipDirectoryPermissions(t *testing.T) {
 	// Disable user's umask to enable creation of files with any permission, restore it after the test
-	userUmask := unix.Umask(0)
-	defer unix.Umask(userUmask)
+	userUmask := UnixUmaskZero()
+	defer UnixUmask(userUmask)
 
 	// This arduino library has files before their containing directories in the zip,
 	// so a good test case that these directory permissions are created correctly
@@ -161,9 +160,9 @@ func TestZipDirectoryPermissions(t *testing.T) {
 		// Test files and directories (excluding the parent) match permissions from the zip file
 		if path != tmp.String() {
 			if info.IsDir() {
-				require.Equal(t, os.ModeDir|os.FileMode(0755), info.Mode())
+				require.Equal(t, os.ModeDir|os.FileMode(OsDirPerms(0755)), info.Mode())
 			} else {
-				require.Equal(t, os.FileMode(0644), info.Mode())
+				require.Equal(t, os.FileMode(OsFilePerms(0644)), info.Mode())
 			}
 		}
 		return nil
