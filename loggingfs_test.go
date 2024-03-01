@@ -70,6 +70,14 @@ func (m *LoggingFS) OpenFile(name string, flags int, perm os.FileMode) (*os.File
 	return os.OpenFile(os.DevNull, flags, perm)
 }
 
+func (m *LoggingFS) Stat(name string) (os.FileInfo, error) {
+	return nil, nil
+}
+
+func (m *LoggingFS) Chmod(name string, mode os.FileMode) error {
+	return nil
+}
+
 func (m *LoggingFS) String() string {
 	res := ""
 	for _, op := range m.Journal {
