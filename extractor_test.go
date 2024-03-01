@@ -284,11 +284,11 @@ func TestUnixPermissions(t *testing.T) {
 			filename := filepath.Base(path)
 			// Desired permissions indicated by part of the filenames inside the zip/tar files
 			if strings.HasPrefix(filename, "dir") {
-				desiredPermString, _ := strings.CutPrefix(filename, "dir")
+				desiredPermString := strings.Split(filename, "dir")[1]
 				desiredPerms, _ := strconv.ParseUint(desiredPermString, 8, 32)
 				require.Equal(t, os.ModeDir|os.FileMode(OsDirPerms(desiredPerms)), info.Mode())
 			} else if strings.HasPrefix(filename, "file") {
-				desiredPermString, _ := strings.CutPrefix(filename, "file")
+				desiredPermString := strings.Split(filename, "file")[1]
 				desiredPerms, _ := strconv.ParseUint(desiredPermString, 8, 32)
 				require.Equal(t, os.FileMode(OsFilePerms(desiredPerms)), info.Mode())
 			}
