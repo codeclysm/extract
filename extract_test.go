@@ -220,6 +220,48 @@ func TestExtract(t *testing.T) {
 	}
 }
 
+func TestExtractIdempotency(t *testing.T) {
+	for _, test := range ExtractCases {
+		dir, _ := os.MkdirTemp("", "")
+		dir = filepath.Join(dir, "test")
+		data, err := os.ReadFile(test.Archive)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var extractFn func(context.Context, io.Reader, string, extract.Renamer) error
+		switch filepath.Ext(test.Archive) {
+		case ".bz2":
+			extractFn = extract.Bz2
+		case ".gz":
+			extractFn = extract.Gz
+		case ".zip":
+			extractFn = extract.Zip
+		case ".mistery":
+			extractFn = extract.Archive
+		default:
+			t.Fatal("unknown error")
+		}
+
+		buffer := bytes.NewBuffer(data)
+		if err = extractFn(context.Background(), buffer, dir, test.Renamer); err != nil {
+			t.Fatal(test.Name, ": Should not fail first extraction: "+err.Error())
+		}
+
+		buffer = bytes.NewBuffer(data)
+		if err = extractFn(context.Background(), buffer, dir, test.Renamer); err != nil {
+			t.Fatal(test.Name, ": Should not fail second extraction: "+err.Error())
+		}
+
+		testWalk(t, dir, test.Files)
+
+		err = os.RemoveAll(dir)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func BenchmarkArchive(b *testing.B) {
 	dir, _ := os.MkdirTemp("", "")
 	data, _ := os.ReadFile("testdata/archive.tar.bz2")
