@@ -65,7 +65,7 @@ func testArchive(t *testing.T, archivePath *paths.Path) {
 }
 
 func TestZipSlipHardening(t *testing.T) {
-	{
+	t.Run("ZipTraversal", func(t *testing.T) {
 		logger := &LoggingFS{}
 		extractor := extract.Extractor{FS: logger}
 		data, err := os.Open("testdata/zipslip/evil.zip")
@@ -74,8 +74,9 @@ func TestZipSlipHardening(t *testing.T) {
 		require.NoError(t, data.Close())
 		fmt.Print(logger)
 		require.Empty(t, logger.Journal)
-	}
-	{
+	})
+
+	t.Run("TarTraversal", func(t *testing.T) {
 		logger := &LoggingFS{}
 		extractor := extract.Extractor{FS: logger}
 		data, err := os.Open("testdata/zipslip/evil.tar")
@@ -84,9 +85,23 @@ func TestZipSlipHardening(t *testing.T) {
 		require.NoError(t, data.Close())
 		fmt.Print(logger)
 		require.Empty(t, logger.Journal)
-	}
+	})
 
-	if runtime.GOOS == "windows" {
+	t.Run("TarLinkTraversal", func(t *testing.T) {
+		logger := &LoggingFS{}
+		extractor := extract.Extractor{FS: logger}
+		data, err := os.Open("testdata/zipslip/evil-link-traversal.tar")
+		require.NoError(t, err)
+		require.NoError(t, extractor.Tar(context.Background(), data, "/tmp/test", nil))
+		require.NoError(t, data.Close())
+		fmt.Print(logger)
+		require.Empty(t, logger.Journal)
+	})
+
+	t.Run("WindowsTarTraversal", func(t *testing.T) {
+		if runtime.GOOS != "windows" {
+			t.Skip("Skipped on non-Windows host")
+		}
 		logger := &LoggingFS{}
 		extractor := extract.Extractor{FS: logger}
 		data, err := os.Open("testdata/zipslip/evil-win.tar")
@@ -95,7 +110,7 @@ func TestZipSlipHardening(t *testing.T) {
 		require.NoError(t, data.Close())
 		fmt.Print(logger)
 		require.Empty(t, logger.Journal)
-	}
+	})
 }
 
 // MockDisk is a disk that chroots to a directory

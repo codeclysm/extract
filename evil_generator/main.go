@@ -22,6 +22,11 @@ func main() {
 		log.Fatalf("Output path %s is not a directory", outputDir)
 	}
 
+	generateEvilZipSlip(outputDir)
+	generateEvilSymLinkPathTraversalTar(outputDir)
+}
+
+func generateEvilZipSlip(outputDir *paths.Path) {
 	evilPathTraversalFiles := []string{
 		"..",
 		"../../../../../../../../../../../../../../../../../../../../tmp/evil.txt",
@@ -102,5 +107,23 @@ func main() {
 		if err := outputDir.Join("evil-win.tar").WriteFile(buf.Bytes()); err != nil {
 			log.Fatal(err)
 		}
+	}
+}
+
+func generateEvilSymLinkPathTraversalTar(outputDir *paths.Path) {
+	outputTarFile, err := outputDir.Join("evil-link-traversal.tar").Create()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer outputTarFile.Close()
+
+	tw := tar.NewWriter(outputTarFile)
+	defer tw.Close()
+
+	if err := tw.WriteHeader(&tar.Header{
+		Name: "leak", Linkname: "../../../../../../../../../../../../../../../tmp/something-important",
+		Mode: 0o0777, Size: 0, Typeflag: tar.TypeLink,
+	}); err != nil {
+		log.Fatal(err)
 	}
 }

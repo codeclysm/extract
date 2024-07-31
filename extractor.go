@@ -217,7 +217,10 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 				name = rename(name)
 			}
 
-			name = filepath.Join(location, name)
+			name, err = safeJoin(location, name)
+			if err != nil {
+				continue
+			}
 			links = append(links, &link{Path: path, Name: name})
 		case tar.TypeSymlink:
 			symlinks = append(symlinks, &link{Path: path, Name: header.Linkname})
