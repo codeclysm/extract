@@ -75,11 +75,6 @@ func Gz(ctx context.Context, body io.Reader, location string, rename Renamer) er
 	return extractor.Gz(ctx, body, location, rename)
 }
 
-type link struct {
-	Name string
-	Path string
-}
-
 // Tar extracts a .tar archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Tar(ctx context.Context, body io.Reader, location string, rename Renamer) error {

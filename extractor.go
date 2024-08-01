@@ -156,11 +156,16 @@ func (e *Extractor) Gz(ctx context.Context, body io.Reader, location string, ren
 	return nil
 }
 
+type link struct {
+	Name string
+	Path string
+}
+
 // Tar extracts a .tar archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	links := []link{}
-	symlinks := []link{}
+	links := []*link{}
+	symlinks := []*link{}
 
 	// We make the first pass creating the directory structure, or we could end up
 	// attempting to create a file where there's no folder
@@ -212,9 +217,9 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 			}
 
 			name = filepath.Join(location, name)
-			links = append(links, link{Path: path, Name: name})
+			links = append(links, &link{Path: path, Name: name})
 		case tar.TypeSymlink:
-			symlinks = append(symlinks, link{Path: path, Name: header.Linkname})
+			symlinks = append(symlinks, &link{Path: path, Name: header.Linkname})
 		}
 	}
 
@@ -230,14 +235,14 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 		}
 	}
 
-	for i := range symlinks {
+	for _, symlink := range symlinks {
 		select {
 		case <-ctx.Done():
 			return errors.New("interrupted")
 		default:
 		}
-		if err := e.FS.Symlink(symlinks[i].Name, symlinks[i].Path); err != nil {
-			return errors.Annotatef(err, "Create link %s", symlinks[i].Path)
+		if err := e.FS.Symlink(symlink.Name, symlink.Path); err != nil {
+			return errors.Annotatef(err, "Create link %s", symlink.Path)
 		}
 	}
 	return nil
@@ -271,7 +276,7 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 		return errors.Annotatef(err, "Read the zip file")
 	}
 
-	links := []link{}
+	links := []*link{}
 
 	// We make the first pass creating the directory structure, or we could end up
 	// attempting to create a file where there's no folder
@@ -318,7 +323,7 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 			} else if name, err := io.ReadAll(f); err != nil {
 				return errors.Annotatef(err, "Read address of link %s", path)
 			} else {
-				links = append(links, link{Path: path, Name: string(name)})
+				links = append(links, &link{Path: path, Name: string(name)})
 				f.Close()
 			}
 		default:
@@ -333,14 +338,14 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 	}
 
 	// Now we make another pass creating the links
-	for i := range links {
+	for _, link := range links {
 		select {
 		case <-ctx.Done():
 			return errors.New("interrupted")
 		default:
 		}
-		if err := e.FS.Symlink(links[i].Name, links[i].Path); err != nil {
-			return errors.Annotatef(err, "Create link %s", links[i].Path)
+		if err := e.FS.Symlink(link.Name, link.Path); err != nil {
+			return errors.Annotatef(err, "Create link %s", link.Path)
 		}
 	}
 
