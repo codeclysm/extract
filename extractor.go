@@ -24,10 +24,19 @@ import (
 // rather than directly on the filesystem
 type Extractor struct {
 	FS interface {
-		Link(string, string) error
-		MkdirAll(string, os.FileMode) error
+		// Link creates newname as a hard link to the oldname file. If there is an error, it will be of type *LinkError.
+		// Differently from os.Link, if newname already exists it will be overwritten.
+		Link(oldname, newname string) error
+
+		// MkdirAll creates the directory path and all his parents if needed.
+		MkdirAll(path string, perm os.FileMode) error
+
+		// OpenFile opens the named file with specified flag (O_RDONLY etc.).
 		OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
-		Symlink(string, string) error
+
+		// Symlink creates newname as a symbolic link to oldname.
+		// Differently from os.Symlink, if newname already exists it will be overwritten.
+		Symlink(oldname, newname string) error
 	}
 }
 
