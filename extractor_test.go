@@ -1,6 +1,8 @@
 package extract_test
 
 import (
+	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"context"
 	"fmt"
@@ -110,6 +112,128 @@ func TestZipSlipHardening(t *testing.T) {
 		require.NoError(t, data.Close())
 		fmt.Print(logger)
 		require.Empty(t, logger.Journal)
+	})
+}
+
+func mkTempDir(t *testing.T) *paths.Path {
+	tmp, err := paths.MkTempDir("", "test")
+	require.NoError(t, err)
+	t.Cleanup(func() { tmp.RemoveAll() })
+	return tmp
+}
+
+func TestSymLinkMazeHardening(t *testing.T) {
+	addTarSymlink := func(t *testing.T, tw *tar.Writer, new, old string) {
+		err := tw.WriteHeader(&tar.Header{
+			Mode: 0o0777, Typeflag: tar.TypeSymlink, Name: new, Linkname: old,
+		})
+		require.NoError(t, err)
+	}
+	addZipSymlink := func(t *testing.T, zw *zip.Writer, new, old string) {
+		h := &zip.FileHeader{Name: new, Method: zip.Deflate}
+		h.SetMode(os.ModeSymlink)
+		w, err := zw.CreateHeader(h)
+		require.NoError(t, err)
+		_, err = w.Write([]byte(old))
+		require.NoError(t, err)
+	}
+
+	t.Run("TarWithSymlinkToAbsPath", func(t *testing.T) {
+		// Create target dir
+		tmp := mkTempDir(t)
+		targetDir := tmp.Join("test")
+		require.NoError(t, targetDir.Mkdir())
+
+		// Make a tar archive with symlink maze
+		outputTar := bytes.NewBuffer(nil)
+		tw := tar.NewWriter(outputTar)
+		addTarSymlink(t, tw, "aaa", tmp.String())
+		addTarSymlink(t, tw, "aaa/sym", "something")
+		require.NoError(t, tw.Close())
+
+		// Run extract
+		extractor := extract.Extractor{FS: &LoggingFS{}}
+		require.Error(t, extractor.Tar(context.Background(), outputTar, targetDir.String(), nil))
+		require.NoFileExists(t, tmp.Join("sym").String())
+	})
+
+	t.Run("ZipWithSymlinkToAbsPath", func(t *testing.T) {
+		// Create target dir
+		tmp := mkTempDir(t)
+		targetDir := tmp.Join("test")
+		require.NoError(t, targetDir.Mkdir())
+
+		// Make a zip archive with symlink maze
+		outputZip := bytes.NewBuffer(nil)
+		zw := zip.NewWriter(outputZip)
+		addZipSymlink(t, zw, "aaa", tmp.String())
+		addZipSymlink(t, zw, "aaa/sym", "something")
+		require.NoError(t, zw.Close())
+
+		// Run extract
+		extractor := extract.Extractor{FS: &LoggingFS{}}
+		err := extractor.Zip(context.Background(), outputZip, targetDir.String(), nil)
+		require.NoFileExists(t, tmp.Join("sym").String())
+		require.Error(t, err)
+	})
+
+	t.Run("TarWithSymlinkToRelativeExternalPath", func(t *testing.T) {
+		// Create target dir
+		tmp := mkTempDir(t)
+		targetDir := tmp.Join("test")
+		require.NoError(t, targetDir.Mkdir())
+		checkDir := tmp.Join("secret")
+		require.NoError(t, checkDir.MkdirAll())
+
+		// Make a tar archive with regular symlink maze
+		outputTar := bytes.NewBuffer(nil)
+		tw := tar.NewWriter(outputTar)
+		addTarSymlink(t, tw, "aaa", "../secret")
+		addTarSymlink(t, tw, "aaa/sym", "something")
+		require.NoError(t, tw.Close())
+
+		extractor := extract.Extractor{FS: &LoggingFS{}}
+		require.Error(t, extractor.Tar(context.Background(), outputTar, targetDir.String(), nil))
+		require.NoFileExists(t, checkDir.Join("sym").String())
+	})
+
+	t.Run("TarWithSymlinkToInternalPath", func(t *testing.T) {
+		// Create target dir
+		tmp := mkTempDir(t)
+		targetDir := tmp.Join("test")
+		require.NoError(t, targetDir.Mkdir())
+
+		// Make a tar archive with regular symlink maze
+		outputTar := bytes.NewBuffer(nil)
+		tw := tar.NewWriter(outputTar)
+		require.NoError(t, tw.WriteHeader(&tar.Header{Mode: 0o0777, Typeflag: tar.TypeDir, Name: "tmp"}))
+		addTarSymlink(t, tw, "aaa", "tmp")
+		addTarSymlink(t, tw, "aaa/sym", "something")
+		require.NoError(t, tw.Close())
+
+		extractor := extract.Extractor{FS: &LoggingFS{}}
+		require.NoError(t, extractor.Tar(context.Background(), outputTar, targetDir.String(), nil))
+		require.FileExists(t, targetDir.Join("tmp", "sym").String())
+	})
+
+	t.Run("TarWithSymlinkToExternalPathWithoutMazing", func(t *testing.T) {
+		// Create target dir
+		tmp := mkTempDir(t)
+		targetDir := tmp.Join("test")
+		require.NoError(t, targetDir.Mkdir())
+
+		// Make a tar archive with valid symlink maze
+		outputTar := bytes.NewBuffer(nil)
+		tw := tar.NewWriter(outputTar)
+		require.NoError(t, tw.WriteHeader(&tar.Header{Mode: 0o0777, Typeflag: tar.TypeDir, Name: "tmp"}))
+		addTarSymlink(t, tw, "aaa", "../tmp")
+		require.NoError(t, tw.Close())
+
+		extractor := extract.Extractor{FS: &LoggingFS{}}
+		require.NoError(t, extractor.Tar(context.Background(), outputTar, targetDir.String(), nil))
+		st, err := targetDir.Join("aaa").Lstat()
+		require.NoError(t, err)
+		require.Equal(t, "aaa", st.Name())
 	})
 }
 

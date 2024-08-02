@@ -17,59 +17,84 @@ type LoggedOp struct {
 	OldPath string
 	Mode    os.FileMode
 	Flags   int
+	Err     error
 }
 
 func (op *LoggedOp) String() string {
+	res := ""
 	switch op.Op {
 	case "link":
-		return fmt.Sprintf("link     %s -> %s", op.Path, op.OldPath)
+		res += fmt.Sprintf("link     %s -> %s", op.Path, op.OldPath)
 	case "symlink":
-		return fmt.Sprintf("symlink  %s -> %s", op.Path, op.OldPath)
+		res += fmt.Sprintf("symlink  %s -> %s", op.Path, op.OldPath)
 	case "mkdirall":
-		return fmt.Sprintf("mkdirall %v %s", op.Mode, op.Path)
+		res += fmt.Sprintf("mkdirall %v %s", op.Mode, op.Path)
 	case "open":
-		return fmt.Sprintf("open     %v %s (flags=%04x)", op.Mode, op.Path, op.Flags)
+		res += fmt.Sprintf("open     %v %s (flags=%04x)", op.Mode, op.Path, op.Flags)
 	case "remove":
-		return fmt.Sprintf("remove   %v", op.Path)
+		res += fmt.Sprintf("remove   %v", op.Path)
+	default:
+		panic("unknown LoggedOP " + op.Op)
 	}
-	panic("unknown LoggedOP " + op.Op)
+	if op.Err != nil {
+		res += " error: " + op.Err.Error()
+	} else {
+		res += " success"
+	}
+	return res
 }
 
 func (m *LoggingFS) Link(oldname, newname string) error {
-	m.Journal = append(m.Journal, &LoggedOp{
+	err := os.Link(oldname, newname)
+	op := &LoggedOp{
 		Op:      "link",
 		OldPath: oldname,
 		Path:    newname,
-	})
-	return os.Link(oldname, newname)
+		Err:     err,
+	}
+	m.Journal = append(m.Journal, op)
+	fmt.Println("FS>", op)
+	return err
 }
 
 func (m *LoggingFS) MkdirAll(path string, perm os.FileMode) error {
-	m.Journal = append(m.Journal, &LoggedOp{
+	err := os.MkdirAll(path, perm)
+	op := &LoggedOp{
 		Op:   "mkdirall",
 		Path: path,
 		Mode: perm,
-	})
-	return os.MkdirAll(path, perm)
+		Err:  err,
+	}
+	m.Journal = append(m.Journal, op)
+	fmt.Println("FS>", op)
+	return err
 }
 
 func (m *LoggingFS) Symlink(oldname, newname string) error {
-	m.Journal = append(m.Journal, &LoggedOp{
+	err := os.Symlink(oldname, newname)
+	op := &LoggedOp{
 		Op:      "symlink",
 		OldPath: oldname,
 		Path:    newname,
-	})
-	return os.Symlink(oldname, newname)
+		Err:     err,
+	}
+	m.Journal = append(m.Journal, op)
+	fmt.Println("FS>", op)
+	return err
 }
 
 func (m *LoggingFS) OpenFile(name string, flags int, perm os.FileMode) (*os.File, error) {
-	m.Journal = append(m.Journal, &LoggedOp{
+	f, err := os.OpenFile(name, flags, perm)
+	op := &LoggedOp{
 		Op:    "open",
 		Path:  name,
 		Mode:  perm,
 		Flags: flags,
-	})
-	return os.OpenFile(os.DevNull, flags, perm)
+		Err:   err,
+	}
+	m.Journal = append(m.Journal, op)
+	fmt.Println("FS>", op)
+	return f, err
 }
 
 func (m *LoggingFS) Remove(path string) error {
