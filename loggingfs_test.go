@@ -39,6 +39,7 @@ func (m *LoggingFS) Link(oldname, newname string) error {
 		OldPath: oldname,
 		Path:    newname,
 	})
+	_ = os.Remove(newname)
 	return nil
 }
 
@@ -57,6 +58,7 @@ func (m *LoggingFS) Symlink(oldname, newname string) error {
 		OldPath: oldname,
 		Path:    newname,
 	})
+	_ = os.Remove(newname)
 	return nil
 }
 
