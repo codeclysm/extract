@@ -4,25 +4,27 @@
 // Most of the time you'll just need to call the proper function with a Reader and
 // a destination:
 //
-// 	file, _ := os.Open("path/to/file.tar.bz2")
-// 	extract.Bz2(context.TODO, file, "/path/where/to/extract", nil)
+//	file, _ := os.Open("path/to/file.tar.bz2")
+//	extract.Bz2(context.TODO, file, "/path/where/to/extract", nil)
+//
 // ```
 //
 // Sometimes you'll want a bit more control over the files, such as extracting a
 // subfolder of the archive. In this cases you can specify a renamer func that will
 // change the path for every file:
 //
-// 	var shift = func(path string) string {
+//	var shift = func(path string) string {
 //		parts := strings.Split(path, string(filepath.Separator))
 //		parts = parts[1:]
 //		return strings.Join(parts, string(filepath.Separator))
 //	}
 //	extract.Bz2(context.TODO, file, "/path/where/to/extract", shift)
+//
 // ```
 //
 // If you don't know which archive you're dealing with (life really is always a surprise) you can use Archive, which will infer the type of archive from the first bytes
 //
-// 	extract.Archive(context.TODO, file, "/path/where/to/extract", nil)
+//	extract.Archive(context.TODO, file, "/path/where/to/extract", nil)
 package extract
 
 import (
@@ -41,75 +43,49 @@ type Renamer func(string) string
 // handle the names of the files.
 // If the file is not an archive, an error is returned.
 func Archive(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	extractor := Extractor{
-		FS: fs{},
-	}
-
+	extractor := Extractor{FS: fs{}}
 	return extractor.Archive(ctx, body, location, rename)
 }
 
 // Zstd extracts a .zst or .tar.zst archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Zstd(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	extractor := Extractor{
-		FS: fs{},
-	}
-
+	extractor := Extractor{FS: fs{}}
 	return extractor.Zstd(ctx, body, location, rename)
 }
 
 // Xz extracts a .xz or .tar.xz archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Xz(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	extractor := Extractor{
-		FS: fs{},
-	}
-
+	extractor := Extractor{FS: fs{}}
 	return extractor.Xz(ctx, body, location, rename)
 }
 
 // Bz2 extracts a .bz2 or .tar.bz2 archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Bz2(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	extractor := Extractor{
-		FS: fs{},
-	}
-
+	extractor := Extractor{FS: fs{}}
 	return extractor.Bz2(ctx, body, location, rename)
 }
 
 // Gz extracts a .gz or .tar.gz archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Gz(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	extractor := Extractor{
-		FS: fs{},
-	}
-
+	extractor := Extractor{FS: fs{}}
 	return extractor.Gz(ctx, body, location, rename)
-}
-
-type link struct {
-	Name string
-	Path string
 }
 
 // Tar extracts a .tar archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example)
 func Tar(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	extractor := Extractor{
-		FS: fs{},
-	}
-
+	extractor := Extractor{FS: fs{}}
 	return extractor.Tar(ctx, body, location, rename)
 }
 
 // Zip extracts a .zip archived stream of data in the specified location.
 // It accepts a rename function to handle the names of the files (see the example).
 func Zip(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	extractor := Extractor{
-		FS: fs{},
-	}
-
+	extractor := Extractor{FS: fs{}}
 	return extractor.Zip(ctx, body, location, rename)
 }
 

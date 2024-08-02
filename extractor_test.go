@@ -106,6 +106,7 @@ type MockDisk struct {
 func (m MockDisk) Link(oldname, newname string) error {
 	oldname = filepath.Join(m.Base, oldname)
 	newname = filepath.Join(m.Base, newname)
+	_ = os.Remove(newname)
 	return os.Link(oldname, newname)
 }
 
@@ -117,6 +118,7 @@ func (m MockDisk) MkdirAll(path string, perm os.FileMode) error {
 func (m MockDisk) Symlink(oldname, newname string) error {
 	oldname = filepath.Join(m.Base, oldname)
 	newname = filepath.Join(m.Base, newname)
+	_ = os.Remove(newname)
 	return os.Symlink(oldname, newname)
 }
 
