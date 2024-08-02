@@ -397,8 +397,7 @@ func testWalk(t *testing.T, dir string, testFiles Files) {
 
 func TestTarGzMemoryConsumption(t *testing.T) {
 	archive := paths.New("testdata/big.tar.gz")
-	err := download(t, "http://downloads.arduino.cc/gcc-arm-none-eabi-4.8.3-2014q1-windows.tar.gz", archive)
-	require.NoError(t, err)
+	download(t, "http://downloads.arduino.cc/gcc-arm-none-eabi-4.8.3-2014q1-windows.tar.gz", archive)
 
 	tmpDir, err := paths.MkTempDir("", "")
 	require.NoError(t, err)
@@ -425,8 +424,7 @@ func TestTarGzMemoryConsumption(t *testing.T) {
 
 func TestZipMemoryConsumption(t *testing.T) {
 	archive := paths.New("testdata/big.zip")
-	err := download(t, "http://downloads.arduino.cc/tools/gcc-arm-none-eabi-7-2017-q4-major-win32-arduino1.zip", archive)
-	require.NoError(t, err)
+	download(t, "http://downloads.arduino.cc/tools/gcc-arm-none-eabi-7-2017-q4-major-win32-arduino1.zip", archive)
 
 	tmpDir, err := paths.MkTempDir("", "")
 	require.NoError(t, err)
@@ -451,27 +449,23 @@ func TestZipMemoryConsumption(t *testing.T) {
 	require.True(t, heapUsed < 10000000, "heap consumption should be less than 10M but is %d", heapUsed)
 }
 
-func download(t require.TestingT, url string, file *paths.Path) error {
+func download(t require.TestingT, url string, file *paths.Path) {
 	if file.Exist() {
-		return nil
+		return
 	}
 
 	fmt.Printf("Downloading %s in %s\n", url, file)
 	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
+	require.NoError(t, err)
 	defer resp.Body.Close()
 
 	out, err := file.Create()
-	if err != nil {
-		return err
-	}
+	require.NoError(t, err)
 
 	_, err = io.Copy(out, resp.Body)
 	out.Close()
 	if err != nil {
 		file.Remove()
 	}
-	return err
+	require.NoError(t, err)
 }
