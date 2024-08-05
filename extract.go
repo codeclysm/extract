@@ -92,7 +92,6 @@ func Zip(ctx context.Context, body io.Reader, location string, rename Renamer) e
 type fs struct{}
 
 func (f fs) Link(oldname, newname string) error {
-	_ = os.Remove(newname) // Ignore error. We don't care if the file doesn't exist.
 	return os.Link(oldname, newname)
 }
 
@@ -101,10 +100,13 @@ func (f fs) MkdirAll(path string, perm os.FileMode) error {
 }
 
 func (f fs) Symlink(oldname, newname string) error {
-	_ = os.Remove(newname) // Ignore error. We don't care if the file doesn't exist.
 	return os.Symlink(oldname, newname)
 }
 
 func (f fs) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
 	return os.OpenFile(name, flag, perm)
+}
+
+func (f fs) Remove(path string) error {
+	return os.Remove(path)
 }

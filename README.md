@@ -54,6 +54,7 @@ type FS interface {
     MkdirAll(string, os.FileMode) error
     OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
     Symlink(string, string) error
+    Remove(path string) error
 }
 ```
 
