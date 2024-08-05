@@ -248,9 +248,6 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 }
 
 func (e *Extractor) extractSymlinks(ctx context.Context, symlinks []*link) error {
-	var placeholders []*link
-	// remover, removeSupported := e.FS.(FSRemover)
-
 	for _, symlink := range symlinks {
 		select {
 		case <-ctx.Done():
@@ -258,27 +255,18 @@ func (e *Extractor) extractSymlinks(ctx context.Context, symlinks []*link) error
 		default:
 		}
 
-		// If the symlink pointer is clean make the symlink straighaway
-		if clean := filepath.Clean(symlink.Name); !strings.Contains(clean, "..") && !filepath.IsAbs(clean) {
-			_ = e.FS.Remove(symlink.Path)
-			if err := e.FS.Symlink(symlink.Name, symlink.Path); err != nil {
-				return errors.Annotatef(err, "Create link %s", symlink.Path)
-			}
-		} else {
-			// Otherwise make a placeholder and replace it after unpacking everything
-			_ = e.FS.Remove(symlink.Path)
-			f, err := e.FS.OpenFile(symlink.Path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(0666))
-			if err != nil {
-				return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
-			}
-			if err := f.Close(); err != nil {
-				return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
-			}
-			placeholders = append(placeholders, symlink)
+		// Make a placeholder and replace it after unpacking everything
+		_ = e.FS.Remove(symlink.Path)
+		f, err := e.FS.OpenFile(symlink.Path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(0666))
+		if err != nil {
+			return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
+		}
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
 		}
 	}
 
-	for _, symlink := range placeholders {
+	for _, symlink := range symlinks {
 		select {
 		case <-ctx.Done():
 			return errors.New("interrupted")
