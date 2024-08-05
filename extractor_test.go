@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/arduino/go-paths-helper"
-	"github.com/codeclysm/extract/v3"
+	"github.com/codeclysm/extract/v4"
 	"github.com/stretchr/testify/require"
 )
 
@@ -106,7 +106,6 @@ type MockDisk struct {
 func (m MockDisk) Link(oldname, newname string) error {
 	oldname = filepath.Join(m.Base, oldname)
 	newname = filepath.Join(m.Base, newname)
-	_ = os.Remove(newname)
 	return os.Link(oldname, newname)
 }
 
@@ -118,11 +117,14 @@ func (m MockDisk) MkdirAll(path string, perm os.FileMode) error {
 func (m MockDisk) Symlink(oldname, newname string) error {
 	oldname = filepath.Join(m.Base, oldname)
 	newname = filepath.Join(m.Base, newname)
-	_ = os.Remove(newname)
 	return os.Symlink(oldname, newname)
 }
 
 func (m MockDisk) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
 	name = filepath.Join(m.Base, name)
 	return os.OpenFile(name, flag, perm)
+}
+
+func (m MockDisk) Remove(path string) error {
+	return os.Remove(filepath.Join(m.Base, path))
 }

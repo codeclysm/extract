@@ -25,7 +25,6 @@ import (
 type Extractor struct {
 	FS interface {
 		// Link creates newname as a hard link to the oldname file. If there is an error, it will be of type *LinkError.
-		// Differently from os.Link, if newname already exists it will be overwritten.
 		Link(oldname, newname string) error
 
 		// MkdirAll creates the directory path and all his parents if needed.
@@ -35,8 +34,10 @@ type Extractor struct {
 		OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
 
 		// Symlink creates newname as a symbolic link to oldname.
-		// Differently from os.Symlink, if newname already exists it will be overwritten.
 		Symlink(oldname, newname string) error
+
+		// Remove removes the named file or (empty) directory.
+		Remove(path string) error
 	}
 }
 
@@ -230,6 +231,7 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 			return errors.New("interrupted")
 		default:
 		}
+		_ = e.FS.Remove(links[i].Path)
 		if err := e.FS.Link(links[i].Name, links[i].Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", links[i].Path)
 		}
@@ -241,6 +243,7 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 			return errors.New("interrupted")
 		default:
 		}
+		_ = e.FS.Remove(symlink.Path)
 		if err := e.FS.Symlink(symlink.Name, symlink.Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", symlink.Path)
 		}
@@ -344,6 +347,7 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 			return errors.New("interrupted")
 		default:
 		}
+		_ = e.FS.Remove(link.Path)
 		if err := e.FS.Symlink(link.Name, link.Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", link.Path)
 		}
@@ -358,6 +362,7 @@ func (e *Extractor) copy(ctx context.Context, path string, mode os.FileMode, src
 	if err != nil {
 		return err
 	}
+	_ = e.FS.Remove(path)
 	file, err := e.FS.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode)
 	if err != nil {
 		return err

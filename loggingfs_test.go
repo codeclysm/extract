@@ -29,6 +29,8 @@ func (op *LoggedOp) String() string {
 		return fmt.Sprintf("mkdirall %v %s", op.Mode, op.Path)
 	case "open":
 		return fmt.Sprintf("open     %v %s (flags=%04x)", op.Mode, op.Path, op.Flags)
+	case "remove":
+		return fmt.Sprintf("remove   %v", op.Path)
 	}
 	panic("unknown LoggedOP " + op.Op)
 }
@@ -39,8 +41,7 @@ func (m *LoggingFS) Link(oldname, newname string) error {
 		OldPath: oldname,
 		Path:    newname,
 	})
-	_ = os.Remove(newname)
-	return nil
+	return os.Link(oldname, newname)
 }
 
 func (m *LoggingFS) MkdirAll(path string, perm os.FileMode) error {
@@ -49,7 +50,7 @@ func (m *LoggingFS) MkdirAll(path string, perm os.FileMode) error {
 		Path: path,
 		Mode: perm,
 	})
-	return nil
+	return os.MkdirAll(path, perm)
 }
 
 func (m *LoggingFS) Symlink(oldname, newname string) error {
@@ -58,8 +59,7 @@ func (m *LoggingFS) Symlink(oldname, newname string) error {
 		OldPath: oldname,
 		Path:    newname,
 	})
-	_ = os.Remove(newname)
-	return nil
+	return os.Symlink(oldname, newname)
 }
 
 func (m *LoggingFS) OpenFile(name string, flags int, perm os.FileMode) (*os.File, error) {
@@ -70,6 +70,17 @@ func (m *LoggingFS) OpenFile(name string, flags int, perm os.FileMode) (*os.File
 		Flags: flags,
 	})
 	return os.OpenFile(os.DevNull, flags, perm)
+}
+
+func (m *LoggingFS) Remove(path string) error {
+	err := os.Remove(path)
+	op := &LoggedOp{
+		Op:   "remove",
+		Path: path,
+	}
+	m.Journal = append(m.Journal, op)
+	fmt.Println("FS>", op)
+	return err
 }
 
 func (m *LoggingFS) String() string {
