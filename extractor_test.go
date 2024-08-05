@@ -212,8 +212,30 @@ func TestSymLinkMazeHardening(t *testing.T) {
 		require.NoError(t, tw.Close())
 
 		extractor := extract.Extractor{FS: &LoggingFS{}}
-		require.NoError(t, extractor.Tar(context.Background(), outputTar, targetDir.String(), nil))
-		require.FileExists(t, targetDir.Join("tmp", "sym").String())
+		require.Error(t, extractor.Tar(context.Background(), outputTar, targetDir.String(), nil))
+		require.NoFileExists(t, targetDir.Join("tmp", "sym").String())
+	})
+
+	t.Run("TarWithDoubleSymlinkToExternalPath", func(t *testing.T) {
+		// Create target dir
+		tmp := mkTempDir(t)
+		targetDir := tmp.Join("test")
+		require.NoError(t, targetDir.Mkdir())
+		fmt.Println("TMP:", tmp)
+		fmt.Println("TARGET DIR:", targetDir)
+
+		// Make a tar archive with regular symlink maze
+		outputTar := bytes.NewBuffer(nil)
+		tw := tar.NewWriter(outputTar)
+		tw.WriteHeader(&tar.Header{Name: "fake", Mode: 0777, Typeflag: tar.TypeDir})
+		addTarSymlink(t, tw, "sym-maze", tmp.String())
+		addTarSymlink(t, tw, "sym-maze", "fake")
+		addTarSymlink(t, tw, "sym-maze/oops", "/tmp/something")
+		require.NoError(t, tw.Close())
+
+		extractor := extract.Extractor{FS: &LoggingFS{}}
+		require.Error(t, extractor.Tar(context.Background(), outputTar, targetDir.String(), nil))
+		require.NoFileExists(t, tmp.Join("oops").String())
 	})
 
 	t.Run("TarWithSymlinkToExternalPathWithoutMazing", func(t *testing.T) {
