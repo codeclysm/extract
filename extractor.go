@@ -217,7 +217,10 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 				name = rename(name)
 			}
 
-			name = filepath.Join(location, name)
+			name, err = safeJoin(location, name)
+			if err != nil {
+				continue
+			}
 			links = append(links, &link{Path: path, Name: name})
 		case tar.TypeSymlink:
 			symlinks = append(symlinks, &link{Path: path, Name: header.Linkname})
@@ -237,6 +240,32 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 		}
 	}
 
+	if err := e.extractSymlinks(ctx, symlinks); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *Extractor) extractSymlinks(ctx context.Context, symlinks []*link) error {
+	for _, symlink := range symlinks {
+		select {
+		case <-ctx.Done():
+			return errors.New("interrupted")
+		default:
+		}
+
+		// Make a placeholder and replace it after unpacking everything
+		_ = e.FS.Remove(symlink.Path)
+		f, err := e.FS.OpenFile(symlink.Path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(0666))
+		if err != nil {
+			return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
+		}
+		if err := f.Close(); err != nil {
+			return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
+		}
+	}
+
 	for _, symlink := range symlinks {
 		select {
 		case <-ctx.Done():
@@ -248,6 +277,7 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 			return errors.Annotatef(err, "Create link %s", symlink.Path)
 		}
 	}
+
 	return nil
 }
 
@@ -340,17 +370,8 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 		}
 	}
 
-	// Now we make another pass creating the links
-	for _, link := range links {
-		select {
-		case <-ctx.Done():
-			return errors.New("interrupted")
-		default:
-		}
-		_ = e.FS.Remove(link.Path)
-		if err := e.FS.Symlink(link.Name, link.Path); err != nil {
-			return errors.Annotatef(err, "Create link %s", link.Path)
-		}
+	if err := e.extractSymlinks(ctx, links); err != nil {
+		return err
 	}
 
 	return nil
