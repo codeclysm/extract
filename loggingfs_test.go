@@ -16,6 +16,7 @@ type LoggedOp struct {
 	Path    string
 	OldPath string
 	Mode    os.FileMode
+	Info    os.FileInfo
 	Flags   int
 	Err     error
 }
@@ -33,6 +34,10 @@ func (op *LoggedOp) String() string {
 		res += fmt.Sprintf("open     %v %s (flags=%04x)", op.Mode, op.Path, op.Flags)
 	case "remove":
 		res += fmt.Sprintf("remove   %v", op.Path)
+	case "stat":
+		res += fmt.Sprintf("stat     %v -> %v", op.Path, op.Info)
+	case "chmod":
+		res += fmt.Sprintf("chmod    %v %s", op.Mode, op.Path)
 	default:
 		panic("unknown LoggedOP " + op.Op)
 	}
@@ -102,6 +107,32 @@ func (m *LoggingFS) Remove(path string) error {
 	op := &LoggedOp{
 		Op:   "remove",
 		Path: path,
+	}
+	m.Journal = append(m.Journal, op)
+	fmt.Println("FS>", op)
+	return err
+}
+
+func (m *LoggingFS) Stat(path string) (os.FileInfo, error) {
+	info, err := os.Stat(path)
+	op := &LoggedOp{
+		Op:   "stat",
+		Path: path,
+		Info: info,
+		Err:  err,
+	}
+	m.Journal = append(m.Journal, op)
+	fmt.Println("FS>", op)
+	return info, err
+}
+
+func (m *LoggingFS) Chmod(path string, mode os.FileMode) error {
+	err := os.Chmod(path, mode)
+	op := &LoggedOp{
+		Op:   "chmod",
+		Path: path,
+		Mode: mode,
+		Err:  err,
 	}
 	m.Journal = append(m.Journal, op)
 	fmt.Println("FS>", op)

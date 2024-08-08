@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/arduino/go-paths-helper"
@@ -259,6 +261,74 @@ func TestSymLinkMazeHardening(t *testing.T) {
 	})
 }
 
+func TestUnixPermissions(t *testing.T) {
+	// Disable user's umask to enable creation of files with any permission, restore it after the test
+	userUmask := UnixUmaskZero()
+	defer UnixUmask(userUmask)
+
+	archiveFilenames := []string{
+		"testdata/permissions.zip",
+		"testdata/permissions.tar",
+	}
+	for _, archiveFilename := range archiveFilenames {
+		tmp, err := paths.MkTempDir("", "")
+		require.NoError(t, err)
+		defer tmp.RemoveAll()
+
+		f, err := paths.New(archiveFilename).Open()
+		require.NoError(t, err)
+		err = extract.Archive(context.Background(), f, tmp.String(), nil)
+		require.NoError(t, err)
+
+		filepath.Walk(tmp.String(), func(path string, info os.FileInfo, _ error) error {
+			filename := filepath.Base(path)
+			// Desired permissions indicated by part of the filenames inside the zip/tar files
+			if strings.HasPrefix(filename, "dir") {
+				desiredPermString := strings.Split(filename, "dir")[1]
+				desiredPerms, _ := strconv.ParseUint(desiredPermString, 8, 32)
+				require.Equal(t, os.ModeDir|os.FileMode(OsDirPerms(desiredPerms)), info.Mode())
+			} else if strings.HasPrefix(filename, "file") {
+				desiredPermString := strings.Split(filename, "file")[1]
+				desiredPerms, _ := strconv.ParseUint(desiredPermString, 8, 32)
+				require.Equal(t, os.FileMode(OsFilePerms(desiredPerms)), info.Mode())
+			}
+			return nil
+		})
+	}
+}
+
+func TestZipDirectoryPermissions(t *testing.T) {
+	// Disable user's umask to enable creation of files with any permission, restore it after the test
+	userUmask := UnixUmaskZero()
+	defer UnixUmask(userUmask)
+
+	// This arduino library has files before their containing directories in the zip,
+	// so a good test case that these directory permissions are created correctly
+	archive := paths.New("testdata/filesbeforedirectories.zip")
+	download(t, "https://downloads.arduino.cc/libraries/github.com/arduino-libraries/LiquidCrystal-1.0.7.zip", archive)
+
+	tmp, err := paths.MkTempDir("", "")
+	require.NoError(t, err)
+	defer tmp.RemoveAll()
+
+	f, err := archive.Open()
+	require.NoError(t, err)
+	err = extract.Archive(context.Background(), f, tmp.String(), nil)
+	require.NoError(t, err)
+
+	filepath.Walk(tmp.String(), func(path string, info os.FileInfo, _ error) error {
+		// Test files and directories (excluding the parent) match permissions from the zip file
+		if path != tmp.String() {
+			if info.IsDir() {
+				require.Equal(t, os.ModeDir|os.FileMode(OsDirPerms(0755)), info.Mode())
+			} else {
+				require.Equal(t, os.FileMode(OsFilePerms(0644)), info.Mode())
+			}
+		}
+		return nil
+	})
+}
+
 // MockDisk is a disk that chroots to a directory
 type MockDisk struct {
 	Base string
@@ -288,4 +358,14 @@ func (m MockDisk) OpenFile(name string, flag int, perm os.FileMode) (*os.File, e
 
 func (m MockDisk) Remove(path string) error {
 	return os.Remove(filepath.Join(m.Base, path))
+}
+
+func (m MockDisk) Stat(name string) (os.FileInfo, error) {
+	name = filepath.Join(m.Base, name)
+	return os.Stat(name)
+}
+
+func (m MockDisk) Chmod(name string, mode os.FileMode) error {
+	name = filepath.Join(m.Base, name)
+	return os.Chmod(name, mode)
 }
