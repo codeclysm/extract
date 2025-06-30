@@ -2,7 +2,7 @@
 
 [![Build Status](https://github.com/codeclysm/extract/actions/workflows/test.yaml/badge.svg?branch=master)](https://github.com/codeclysm/extract/actions/workflows/test.yaml)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/codeclysm/extract/master/LICENSE)
-[![Godoc Reference](https://img.shields.io/badge/Godoc-Reference-blue.svg)](https://godoc.org/github.com/codeclysm/extract)
+[![Go Reference](https://pkg.go.dev/badge/github.com/codeclysm/extract/v4.svg)](https://pkg.go.dev/github.com/codeclysm/extract/v4)
 
     import "github.com/codeclysm/extract/v4"
 
