@@ -24,26 +24,26 @@ import (
 // rather than directly on the filesystem
 type Extractor struct {
 	FS interface {
-	// Link creates newname as a hard link to the oldname file. If there is an error, it will be of type *LinkError.
+		// Link creates newname as a hard link to the oldname file. If there is an error, it will be of type *LinkError.
 		Link(oldname, newname string) error
 
-	// MkdirAll creates the directory path and all his parents if needed.
+		// MkdirAll creates the directory path and all his parents if needed.
 		MkdirAll(path string, perm os.FileMode) error
 
-	// OpenFile opens the named file with specified flag (O_RDONLY etc.).
+		// OpenFile opens the named file with specified flag (O_RDONLY etc.).
 		OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
 
-	// Symlink creates newname as a symbolic link to oldname.
+		// Symlink creates newname as a symbolic link to oldname.
 		Symlink(oldname, newname string) error
 
-	// Remove removes the named file or (empty) directory.
+		// Remove removes the named file or (empty) directory.
 		Remove(path string) error
 
-	// Stat returns a FileInfo describing the named file.
+		// Stat returns a FileInfo describing the named file.
 		Stat(name string) (os.FileInfo, error)
 
-	// Chmod changes the mode of the named file to mode.
-	// If the file is a symbolic link, it changes the mode of the link's target.
+		// Chmod changes the mode of the named file to mode.
+		// If the file is a symbolic link, it changes the mode of the link's target.
 		Chmod(name string, mode os.FileMode) error
 	}
 }
@@ -91,11 +91,6 @@ func (e *Extractor) Zstd(ctx context.Context, body io.Reader, location string, r
 		return e.Tar(ctx, body, location, rename)
 	}
 
-	// For compression-only formats, apply rename to location before extracting
-	if rename != nil {
-			location = rename(location)
-		}
-
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -118,11 +113,6 @@ func (e *Extractor) Xz(ctx context.Context, body io.Reader, location string, ren
 		return e.Tar(ctx, body, location, rename)
 	}
 
-	// For compression-only formats, apply rename to location before extracting
-	if rename != nil {
-			location = rename(location)
-		}
-
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -143,11 +133,6 @@ func (e *Extractor) Bz2(ctx context.Context, body io.Reader, location string, re
 	if kind.Extension == "tar" {
 		return e.Tar(ctx, body, location, rename)
 	}
-
-	// For compression-only formats, apply rename to location before extracting
-	if rename != nil {
-			location = rename(location)
-		}
 
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
@@ -172,11 +157,6 @@ func (e *Extractor) Gz(ctx context.Context, body io.Reader, location string, ren
 	if kind.Extension == "tar" {
 		return e.Tar(ctx, body, location, rename)
 	}
-	// For compression-only formats, apply rename to location before extracting
-	if rename != nil {
-			location = rename(location)
-		}
-
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -206,24 +186,24 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 		}
 
 		header, err := tr.Next()
-	if err == io.EOF {
+		if err == io.EOF {
 			break
 		}
 
-	if err != nil {
+		if err != nil {
 			return errors.Annotatef(err, "Read tar stream")
 		}
 
 		path := header.Name
-	if rename != nil {
+		if rename != nil {
 			path = rename(path)
 		}
 
-	if path == "" {
+		if path == "" {
 			continue
 		}
 
-	if path, err = safeJoin(location, path); err != nil {
+		if path, err = safeJoin(location, path); err != nil {
 			continue
 		}
 
@@ -231,21 +211,21 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-		if err := e.FS.MkdirAll(path, info.Mode()); err != nil {
+			if err := e.FS.MkdirAll(path, info.Mode()); err != nil {
 				return errors.Annotatef(err, "Create directory %s", path)
 			}
 		case tar.TypeReg, tar.TypeRegA:
-		if err := e.copy(ctx, path, info.Mode(), tr); err != nil {
+			if err := e.copy(ctx, path, info.Mode(), tr); err != nil {
 				return errors.Annotatef(err, "Create file %s", path)
 			}
 		case tar.TypeLink:
 			name := header.Linkname
-		if rename != nil {
+			if rename != nil {
 				name = rename(name)
 			}
 
 			name, err = safeJoin(location, name)
-		if err != nil {
+			if err != nil {
 				continue
 			}
 			links = append(links, &link{Path: path, Name: name})
@@ -262,7 +242,7 @@ func (e *Extractor) Tar(ctx context.Context, body io.Reader, location string, re
 		default:
 		}
 		_ = e.FS.Remove(links[i].Path)
-	if err := e.FS.Link(links[i].Name, links[i].Path); err != nil {
+		if err := e.FS.Link(links[i].Name, links[i].Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", links[i].Path)
 		}
 	}
@@ -282,13 +262,13 @@ func (e *Extractor) extractSymlinks(ctx context.Context, symlinks []*link) error
 		default:
 		}
 
-	// Make a placeholder and replace it after unpacking everything
+		// Make a placeholder and replace it after unpacking everything
 		_ = e.FS.Remove(symlink.Path)
 		f, err := e.FS.OpenFile(symlink.Path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(0666))
-	if err != nil {
+		if err != nil {
 			return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
 		}
-	if err := f.Close(); err != nil {
+		if err := f.Close(); err != nil {
 			return fmt.Errorf("creating symlink placeholder %s: %w", symlink.Path, err)
 		}
 	}
@@ -300,7 +280,7 @@ func (e *Extractor) extractSymlinks(ctx context.Context, symlinks []*link) error
 		default:
 		}
 		_ = e.FS.Remove(symlink.Path)
-	if err := e.FS.Symlink(symlink.Name, symlink.Path); err != nil {
+		if err := e.FS.Symlink(symlink.Name, symlink.Path); err != nil {
 			return errors.Annotatef(err, "Create link %s", symlink.Path)
 		}
 	}
@@ -314,18 +294,18 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 	var bodySize int64
 	bodyReaderAt, isReaderAt := (body).(io.ReaderAt)
 	if bodySeeker, isSeeker := (body).(io.Seeker); isReaderAt && isSeeker {
-	// get the size by seeking to the end
+		// get the size by seeking to the end
 		endPos, err := bodySeeker.Seek(0, io.SeekEnd)
-	if err != nil {
+		if err != nil {
 			return fmt.Errorf("failed to seek to the end of the body: %s", err)
 		}
-	// reset the reader to the beginning
-	if _, err := bodySeeker.Seek(0, io.SeekStart); err != nil {
+		// reset the reader to the beginning
+		if _, err := bodySeeker.Seek(0, io.SeekStart); err != nil {
 			return fmt.Errorf("failed to seek to the beginning of the body: %w", err)
 		}
 		bodySize = endPos
 	} else {
-	// read the whole body into a buffer. Not sure this is the best way to do it
+		// read the whole body into a buffer. Not sure this is the best way to do it
 		buffer := bytes.NewBuffer([]byte{})
 		copyCancel(ctx, buffer, body)
 		bodyReaderAt = bytes.NewReader(buffer.Bytes())
@@ -349,23 +329,23 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 
 		path := header.Name
 
-	// Replace backslash with forward slash. There are archives in the wild made with
-	// buggy compressors that use backslash as path separator. The ZIP format explicitly
-	// denies the use of "\" so we just replace it with slash "/".
-	// Moreover it seems that folders are stored as "files" but with a final "\" in the
-	// filename... oh, well...
+		// Replace backslash with forward slash. There are archives in the wild made with
+		// buggy compressors that use backslash as path separator. The ZIP format explicitly
+		// denies the use of "\" so we just replace it with slash "/".
+		// Moreover it seems that folders are stored as "files" but with a final "\" in the
+		// filename... oh, well...
 		forceDir := strings.HasSuffix(path, "\\")
 		path = strings.Replace(path, "\\", "/", -1)
 
-	if rename != nil {
+		if rename != nil {
 			path = rename(path)
 		}
 
-	if path == "" {
+		if path == "" {
 			continue
 		}
 
-	if path, err = safeJoin(location, path); err != nil {
+		if path, err = safeJoin(location, path); err != nil {
 			continue
 		}
 
@@ -374,17 +354,17 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 		switch {
 		case info.IsDir() || forceDir:
 			dirMode := info.Mode() | os.ModeDir | 0100
-		if _, err := e.FS.Stat(path); err == nil {
-			// directory already created, update permissions
-			if err := e.FS.Chmod(path, dirMode); err != nil {
+			if _, err := e.FS.Stat(path); err == nil {
+				// directory already created, update permissions
+				if err := e.FS.Chmod(path, dirMode); err != nil {
 					return errors.Annotatef(err, "Set permissions %s", path)
 				}
 			} else if err := e.FS.MkdirAll(path, dirMode); err != nil {
 				return errors.Annotatef(err, "Create directory %s", path)
 			}
-	// We only check for symlinks because hard links aren't possible
+		// We only check for symlinks because hard links aren't possible
 		case info.Mode()&os.ModeSymlink != 0:
-		if f, err := header.Open(); err != nil {
+			if f, err := header.Open(); err != nil {
 				return errors.Annotatef(err, "Open link %s", path)
 			} else if name, err := io.ReadAll(f); err != nil {
 				return errors.Annotatef(err, "Read address of link %s", path)
@@ -393,7 +373,7 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 				f.Close()
 			}
 		default:
-		if f, err := header.Open(); err != nil {
+			if f, err := header.Open(); err != nil {
 				return errors.Annotatef(err, "Open file %s", path)
 			} else if err := e.copy(ctx, path, info.Mode(), f); err != nil {
 				return errors.Annotatef(err, "Create file %s", path)
@@ -437,12 +417,12 @@ func match(r io.Reader) (io.Reader, types.Type, error) {
 	}
 
 	if seeker, ok := r.(io.Seeker); ok {
-	// if the stream is seekable, we just rewind it
-	if _, err := seeker.Seek(0, io.SeekStart); err != nil {
+		// if the stream is seekable, we just rewind it
+		if _, err := seeker.Seek(0, io.SeekStart); err != nil {
 			return nil, types.Unknown, err
 		}
 	} else {
-	// otherwise we create a new reader that will prepend the buffer
+		// otherwise we create a new reader that will prepend the buffer
 		r = io.MultiReader(bytes.NewBuffer(buffer[:n]), r)
 	}
 
