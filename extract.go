@@ -103,7 +103,7 @@ func (f fs) Symlink(oldname, newname string) error {
 	return os.Symlink(oldname, newname)
 }
 
-func (f fs) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+func (f fs) OpenFile(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 	return os.OpenFile(name, flag, perm)
 }
 

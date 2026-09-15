@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,7 +15,7 @@ import (
 	"testing"
 
 	"github.com/arduino/go-paths-helper"
-	"github.com/codeclysm/extract/v4"
+	"github.com/codeclysm/extract/v5"
 	"github.com/stretchr/testify/require"
 )
 
@@ -351,7 +352,7 @@ func (m MockDisk) Symlink(oldname, newname string) error {
 	return os.Symlink(oldname, newname)
 }
 
-func (m MockDisk) OpenFile(name string, flag int, perm os.FileMode) (*os.File, error) {
+func (m MockDisk) OpenFile(name string, flag int, perm os.FileMode) (io.WriteCloser, error) {
 	name = filepath.Join(m.Base, name)
 	return os.OpenFile(name, flag, perm)
 }

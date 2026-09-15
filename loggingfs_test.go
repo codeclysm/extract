@@ -2,6 +2,7 @@ package extract_test
 
 import (
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -88,7 +89,7 @@ func (m *LoggingFS) Symlink(oldname, newname string) error {
 	return err
 }
 
-func (m *LoggingFS) OpenFile(name string, flags int, perm os.FileMode) (*os.File, error) {
+func (m *LoggingFS) OpenFile(name string, flags int, perm os.FileMode) (io.WriteCloser, error) {
 	f, err := os.OpenFile(name, flags, perm)
 	op := &LoggedOp{
 		Op:    "open",

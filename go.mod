@@ -1,4 +1,4 @@
-module github.com/codeclysm/extract/v4
+module github.com/codeclysm/extract/v5
 
 go 1.22
 
