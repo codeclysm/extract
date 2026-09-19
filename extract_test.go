@@ -184,6 +184,27 @@ func TestArchiveFailure(t *testing.T) {
 	require.Contains(t, err.Error(), "Not a supported archive")
 }
 
+func TestArchiveRenamesCompressionOnlyFiles(t *testing.T) {
+	for _, archive := range []string{"singlefile.gz", "singlefile.bz2"} {
+		t.Run(archive, func(t *testing.T) {
+			data, err := os.ReadFile(filepath.Join("testdata", archive))
+			require.NoError(t, err)
+
+			location := filepath.Join(t.TempDir(), "singlefile")
+			renamed := location + ".renamed"
+			err = extract.Archive(context.Background(), bytes.NewReader(data), location,
+				func(string) string { return renamed })
+			require.NoError(t, err)
+
+			content, err := os.ReadFile(renamed)
+			require.NoError(t, err)
+			require.Equal(t, "singlefile", strings.TrimSpace(string(content)))
+			_, err = os.Stat(location)
+			require.True(t, os.IsNotExist(err))
+		})
+	}
+}
+
 func TestExtract(t *testing.T) {
 	for _, test := range ExtractCases {
 		dir, _ := os.MkdirTemp("", "")

@@ -91,6 +91,7 @@ func (e *Extractor) Zstd(ctx context.Context, body io.Reader, location string, r
 		return e.Tar(ctx, body, location, rename)
 	}
 
+	location = renamePath(location, rename)
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -113,6 +114,7 @@ func (e *Extractor) Xz(ctx context.Context, body io.Reader, location string, ren
 		return e.Tar(ctx, body, location, rename)
 	}
 
+	location = renamePath(location, rename)
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -134,6 +136,7 @@ func (e *Extractor) Bz2(ctx context.Context, body io.Reader, location string, re
 		return e.Tar(ctx, body, location, rename)
 	}
 
+	location = renamePath(location, rename)
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -157,6 +160,7 @@ func (e *Extractor) Gz(ctx context.Context, body io.Reader, location string, ren
 	if kind.Extension == "tar" {
 		return e.Tar(ctx, body, location, rename)
 	}
+	location = renamePath(location, rename)
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -167,6 +171,13 @@ func (e *Extractor) Gz(ctx context.Context, body io.Reader, location string, ren
 type link struct {
 	Name string
 	Path string
+}
+
+func renamePath(location string, rename Renamer) string {
+	if rename != nil {
+		return rename(location)
+	}
+	return location
 }
 
 // Tar extracts a .tar archived stream of data in the specified location.
