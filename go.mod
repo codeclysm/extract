@@ -6,7 +6,7 @@ require (
 	github.com/arduino/go-paths-helper v1.12.1
 	github.com/h2non/filetype v1.1.3
 	github.com/juju/errors v0.0.0-20181118221551-089d3ea4e4d5
-	github.com/klauspost/compress v1.15.13
+	github.com/klauspost/compress v1.18.7
 	github.com/stretchr/testify v1.9.0
 	github.com/ulikunitz/xz v0.5.17
 	golang.org/x/sys v0.16.0
