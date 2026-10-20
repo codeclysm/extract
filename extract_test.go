@@ -330,6 +330,22 @@ func BenchmarkTarGz(b *testing.B) {
 	}
 }
 
+func BenchmarkTarXz(b *testing.B) {
+	archive := paths.New("testdata/big.tar.xz")
+	download(b, "https://github.com/zephyrproject-rtos/sdk-ng/releases/download/v1.0.1/toolchain_gnu_linux-x86_64_arm-zephyr-eabi.tar.xz", archive)
+	dir := b.TempDir()
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		f, err := archive.Open()
+		require.NoError(b, err)
+		err = extract.Xz(context.Background(), f, filepath.Join(dir, strconv.Itoa(i)), nil)
+		f.Close()
+		require.NoError(b, err)
+	}
+}
+
 func BenchmarkZip(b *testing.B) {
 	dir, _ := os.MkdirTemp("", "")
 	data, _ := os.ReadFile("testdata/archive.zip")
