@@ -1,8 +1,6 @@
 module github.com/codeclysm/extract/v4
 
-go 1.22
-
-toolchain go1.22.3
+go 1.26
 
 require (
 	github.com/arduino/go-paths-helper v1.12.1
