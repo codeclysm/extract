@@ -8,7 +8,7 @@ require (
 	github.com/juju/errors v0.0.0-20181118221551-089d3ea4e4d5
 	github.com/klauspost/compress v1.15.13
 	github.com/stretchr/testify v1.9.0
-	github.com/ulikunitz/xz v0.5.12
+	github.com/ulikunitz/xz v0.5.17
 	golang.org/x/sys v0.16.0
 )
 

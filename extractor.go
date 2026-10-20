@@ -3,6 +3,7 @@ package extract
 import (
 	"archive/tar"
 	"archive/zip"
+	"bufio"
 	"bytes"
 	"compress/bzip2"
 	"compress/gzip"
@@ -99,7 +100,8 @@ func (e *Extractor) Zstd(ctx context.Context, body io.Reader, location string, r
 }
 
 func (e *Extractor) Xz(ctx context.Context, body io.Reader, location string, rename Renamer) error {
-	reader, err := xz.NewReader(body)
+	// xz reads its input one byte per Read call, bufio adds a 4KB buffer to avoid that.
+	reader, err := xz.NewReader(bufio.NewReader(body))
 	if err != nil {
 		return errors.Annotatef(err, "opening xz: detect")
 	}
