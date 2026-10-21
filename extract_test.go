@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/arduino/go-paths-helper"
-	"github.com/codeclysm/extract/v4"
+	"github.com/codeclysm/extract/v5"
 	"github.com/stretchr/testify/require"
 )
 

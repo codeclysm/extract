@@ -4,7 +4,7 @@
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/codeclysm/extract/master/LICENSE)
 [![Go Reference](https://pkg.go.dev/badge/github.com/codeclysm/extract/v4.svg)](https://pkg.go.dev/github.com/codeclysm/extract/v4)
 
-    import "github.com/codeclysm/extract/v4"
+    import "github.com/codeclysm/extract/v5"
 
 Package extract allows to extract archives in zip, tar.gz or tar.bz2 formats
 easily.

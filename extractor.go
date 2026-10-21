@@ -32,7 +32,7 @@ type Extractor struct {
 		MkdirAll(path string, perm os.FileMode) error
 
 		// OpenFile opens the named file with specified flag (O_RDONLY etc.).
-		OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
+		OpenFile(name string, flag int, perm os.FileMode) (io.WriteCloser, error)
 
 		// Symlink creates newname as a symbolic link to oldname.
 		Symlink(oldname, newname string) error
@@ -92,6 +92,9 @@ func (e *Extractor) Zstd(ctx context.Context, body io.Reader, location string, r
 		return e.Tar(ctx, body, location, rename)
 	}
 
+	if rename != nil {
+		location = rename(location)
+	}
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -115,6 +118,9 @@ func (e *Extractor) Xz(ctx context.Context, body io.Reader, location string, ren
 		return e.Tar(ctx, body, location, rename)
 	}
 
+	if rename != nil {
+		location = rename(location)
+	}
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -136,6 +142,9 @@ func (e *Extractor) Bz2(ctx context.Context, body io.Reader, location string, re
 		return e.Tar(ctx, body, location, rename)
 	}
 
+	if rename != nil {
+		location = rename(location)
+	}
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
 		return err
@@ -158,6 +167,9 @@ func (e *Extractor) Gz(ctx context.Context, body io.Reader, location string, ren
 
 	if kind.Extension == "tar" {
 		return e.Tar(ctx, body, location, rename)
+	}
+	if rename != nil {
+		location = rename(location)
 	}
 	err = e.copy(ctx, location, 0666, body)
 	if err != nil {
