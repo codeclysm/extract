@@ -393,8 +393,9 @@ func (e *Extractor) Zip(ctx context.Context, body io.Reader, location string, re
 }
 
 func (e *Extractor) copy(ctx context.Context, path string, mode os.FileMode, src io.Reader) error {
-	// We add the execution permission to be able to create files inside it
-	err := e.FS.MkdirAll(filepath.Dir(path), mode|os.ModeDir|0100)
+	// Parent directories missing from the archive get the usual directory mode,
+	// not the file's: a read-only first file would make them unwritable
+	err := e.FS.MkdirAll(filepath.Dir(path), os.ModeDir|0755)
 	if err != nil {
 		return err
 	}

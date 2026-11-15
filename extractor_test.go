@@ -297,6 +297,34 @@ func TestUnixPermissions(t *testing.T) {
 	}
 }
 
+func TestTarImplicitDirectoryPermissions(t *testing.T) {
+	// Disable user's umask to enable creation of files with any permission, restore it after the test
+	userUmask := UnixUmaskZero()
+	defer UnixUmask(userUmask)
+
+	// A tar without directory entries whose first file is read-only
+	var buf bytes.Buffer
+	tw := tar.NewWriter(&buf)
+	for _, f := range []struct {
+		name string
+		mode int64
+	}{{"pkg/LICENSE", 0444}, {"pkg/main.c", 0644}} {
+		require.NoError(t, tw.WriteHeader(&tar.Header{Name: f.name, Mode: f.mode, Size: 2, Typeflag: tar.TypeReg}))
+		_, err := tw.Write([]byte("x\n"))
+		require.NoError(t, err)
+	}
+	require.NoError(t, tw.Close())
+
+	tmp, err := paths.MkTempDir("", "")
+	require.NoError(t, err)
+	defer tmp.RemoveAll()
+
+	require.NoError(t, extract.Tar(context.Background(), &buf, tmp.String(), nil))
+	info, err := os.Stat(tmp.Join("pkg").String())
+	require.NoError(t, err)
+	require.Equal(t, os.ModeDir|os.FileMode(OsDirPerms(0755)), info.Mode())
+}
+
 func TestZipDirectoryPermissions(t *testing.T) {
 	// Disable user's umask to enable creation of files with any permission, restore it after the test
 	userUmask := UnixUmaskZero()
